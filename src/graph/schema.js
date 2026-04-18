@@ -24,3 +24,13 @@ export function createEmptyGraph(root = "") {
     },
   };
 }
+
+export function createEmptyWorkspaceGraph(root = "") {
+  return {
+    version: GRAPH_VERSION,
+    builtAt: 0,
+    root,
+    repos: [],
+    connections: [],
+  };
+}

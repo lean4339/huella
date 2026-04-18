@@ -4,15 +4,18 @@ import path from "path";
 import { traceTerm } from "../core/trace.js";
 import { findDefinitions } from "../core/def.js";
 import { findReferences } from "../core/refs.js";
-import { loadGraph, saveGraph, updateTermSnapshot } from "../graph/store.js";
+import { discoverWorkspace } from "../workspaces/discover.js";
+import { loadGraph, loadWorkspaceGraph, saveGraph, saveWorkspaceGraph, updateTermSnapshot, updateWorkspaceSnapshot } from "../graph/store.js";
 import { formatDefinitionsHuman, formatReferencesHuman, formatTraceHuman } from "../output/human.js";
 import { formatDefinitionsJson, formatReferencesJson, formatTraceJson } from "../output/json.js";
+import { formatWorkspaceHuman, formatWorkspaceJson } from "../output/workspace.js";
 
 function printUsage() {
   console.log("Usage:");
   console.log("  huella <term> [dir] [--json]");
   console.log("  huella def <symbol> [dir] [--json]");
   console.log("  huella refs <symbol> [dir] [--json]");
+  console.log("  huella workspace [dir] [--json]");
   console.log("");
   console.log("Examples:");
   console.log("  huella booking /path/to/repo");
@@ -20,6 +23,7 @@ function printUsage() {
   console.log("  huella .env/local /path/to/repo --json");
   console.log("  huella def create_files /path/to/repo");
   console.log("  huella refs create_files /path/to/repo");
+  console.log("  huella workspace /path/to/folder");
 }
 
 const args = process.argv.slice(2);
@@ -32,7 +36,19 @@ if (!commandOrTerm || commandOrTerm === "--help" || commandOrTerm === "-h") {
   process.exit(commandOrTerm ? 0 : 1);
 }
 
-if (commandOrTerm === "def" || commandOrTerm === "refs") {
+if (commandOrTerm === "workspace") {
+  const workspaceDir = path.resolve(maybeTerm || process.cwd());
+  const result = discoverWorkspace(workspaceDir);
+  const graph = loadWorkspaceGraph(workspaceDir);
+  const { graph: nextGraph } = updateWorkspaceSnapshot(graph, result);
+  const graphPath = saveWorkspaceGraph(nextGraph);
+
+  if (jsonMode) {
+    console.log(JSON.stringify(formatWorkspaceJson(result, { graphPath }), null, 2));
+  } else {
+    console.log(formatWorkspaceHuman(result, { graphPath }));
+  }
+} else if (commandOrTerm === "def" || commandOrTerm === "refs") {
   const symbol = maybeTerm;
   const projectDir = path.resolve(maybeDir || process.cwd());
   if (!symbol) {

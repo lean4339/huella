@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { createEmptyGraph, GRAPH_VERSION } from "./schema.js";
+import { createEmptyGraph, createEmptyWorkspaceGraph, GRAPH_VERSION } from "./schema.js";
 
 const CACHE_DIR = path.join(os.homedir(), ".cache", "huella");
 
@@ -25,8 +25,28 @@ export function loadGraph(root = "") {
   }
 }
 
+export function loadWorkspaceGraph(root = "") {
+  const graphPath = getGraphPath(`${root}__workspace`);
+  try {
+    const graph = JSON.parse(fs.readFileSync(graphPath, "utf-8"));
+    if (graph.version !== GRAPH_VERSION) {
+      return createEmptyWorkspaceGraph(root);
+    }
+    return graph;
+  } catch {
+    return createEmptyWorkspaceGraph(root);
+  }
+}
+
 export function saveGraph(graph) {
   const graphPath = getGraphPath(graph.root);
+  fs.mkdirSync(path.dirname(graphPath), { recursive: true });
+  fs.writeFileSync(graphPath, JSON.stringify(graph, null, 2), "utf-8");
+  return graphPath;
+}
+
+export function saveWorkspaceGraph(graph) {
+  const graphPath = getGraphPath(`${graph.root}__workspace`);
   fs.mkdirSync(path.dirname(graphPath), { recursive: true });
   fs.writeFileSync(graphPath, JSON.stringify(graph, null, 2), "utf-8");
   return graphPath;
@@ -111,4 +131,12 @@ export function updateTermSnapshot(graph, traceResult) {
   };
 
   return { graph, previous: prev, delta: graph.lastDelta };
+}
+
+export function updateWorkspaceSnapshot(graph, workspaceResult) {
+  graph.root = workspaceResult.rootDir;
+  graph.builtAt = Date.now();
+  graph.repos = workspaceResult.repos;
+  graph.connections = workspaceResult.connections;
+  return { graph };
 }

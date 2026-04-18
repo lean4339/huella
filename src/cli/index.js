@@ -3,20 +3,23 @@
 import path from "path";
 import { traceTerm } from "../core/trace.js";
 import { findDefinitions } from "../core/def.js";
+import { findReferences } from "../core/refs.js";
 import { loadGraph, saveGraph, updateTermSnapshot } from "../graph/store.js";
-import { formatDefinitionsHuman, formatTraceHuman } from "../output/human.js";
-import { formatDefinitionsJson, formatTraceJson } from "../output/json.js";
+import { formatDefinitionsHuman, formatReferencesHuman, formatTraceHuman } from "../output/human.js";
+import { formatDefinitionsJson, formatReferencesJson, formatTraceJson } from "../output/json.js";
 
 function printUsage() {
   console.log("Usage:");
   console.log("  huella <term> [dir] [--json]");
   console.log("  huella def <symbol> [dir] [--json]");
+  console.log("  huella refs <symbol> [dir] [--json]");
   console.log("");
   console.log("Examples:");
   console.log("  huella booking /path/to/repo");
   console.log("  huella createUser .");
   console.log("  huella .env/local /path/to/repo --json");
   console.log("  huella def create_files /path/to/repo");
+  console.log("  huella refs create_files /path/to/repo");
 }
 
 const args = process.argv.slice(2);
@@ -29,7 +32,7 @@ if (!commandOrTerm || commandOrTerm === "--help" || commandOrTerm === "-h") {
   process.exit(commandOrTerm ? 0 : 1);
 }
 
-if (commandOrTerm === "def") {
+if (commandOrTerm === "def" || commandOrTerm === "refs") {
   const symbol = maybeTerm;
   const projectDir = path.resolve(maybeDir || process.cwd());
   if (!symbol) {
@@ -42,11 +45,20 @@ if (commandOrTerm === "def") {
   const { graph: nextGraph } = updateTermSnapshot(graph, traceResult);
   saveGraph(nextGraph);
 
-  const result = findDefinitions(nextGraph, symbol);
-  if (jsonMode) {
-    console.log(JSON.stringify(formatDefinitionsJson(result), null, 2));
+  if (commandOrTerm === "def") {
+    const result = findDefinitions(nextGraph, symbol);
+    if (jsonMode) {
+      console.log(JSON.stringify(formatDefinitionsJson(result), null, 2));
+    } else {
+      console.log(formatDefinitionsHuman(result, projectDir));
+    }
   } else {
-    console.log(formatDefinitionsHuman(result, projectDir));
+    const result = findReferences(nextGraph, symbol);
+    if (jsonMode) {
+      console.log(JSON.stringify(formatReferencesJson(result), null, 2));
+    } else {
+      console.log(formatReferencesHuman(result, projectDir));
+    }
   }
 } else {
   const termArg = commandOrTerm;

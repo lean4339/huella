@@ -32,3 +32,13 @@ export function formatDefinitionsJson(result) {
     matches: result.matches,
   };
 }
+
+export function formatReferencesJson(result) {
+  return {
+    term: result.term,
+    variants: result.variants,
+    matchedSymbols: result.matchedSymbols,
+    count: result.references.length,
+    references: result.references,
+  };
+}

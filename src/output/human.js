@@ -86,3 +86,30 @@ export function formatDefinitionsHuman(result, projectDir) {
 
   return lines.join("\n");
 }
+
+export function formatReferencesHuman(result, projectDir) {
+  const lines = [];
+  lines.push(`term: ${result.term}`);
+  lines.push(`variants: ${result.variants.join(", ")}`);
+  lines.push(`matched symbols: ${result.matchedSymbols.length}`);
+  lines.push(`references: ${result.references.length}`);
+
+  if (result.references.length === 0) {
+    lines.push("");
+    lines.push("No references found.");
+    return lines.join("\n");
+  }
+
+  lines.push("");
+  lines.push("References");
+  for (const ref of result.references.slice(0, 30)) {
+    lines.push(`  ${formatPath(ref.fromFile, projectDir)}`);
+    lines.push(`    type: ${ref.type}`);
+    lines.push(`    import: ${ref.specifier}`);
+    if (ref.resolvedPath) {
+      lines.push(`    resolved: ${formatPath(ref.resolvedPath, projectDir)}`);
+    }
+  }
+
+  return lines.join("\n");
+}

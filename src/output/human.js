@@ -117,6 +117,12 @@ export function formatReferencesHuman(result, projectDir) {
     if (ref.resolvedPath) {
       lines.push(`    resolved: ${formatPath(ref.resolvedPath, projectDir)}`);
     }
+    if (ref.lineNumber) {
+      lines.push(`    line: ${ref.lineNumber}`);
+    }
+    if (ref.line) {
+      lines.push(`    > ${ref.line}`);
+    }
   }
 
   return lines.join("\n");

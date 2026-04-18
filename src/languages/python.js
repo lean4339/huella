@@ -49,13 +49,12 @@ export const pythonLanguage = {
 
       match = line.match(/^\s*from\s+([.\w]+)\s+import\s+(.+)$/);
       if (match) {
+        const resolvedPath = resolvePythonModule(match[1], fromFile);
         imports.push({
           type: "import",
           fromFile,
           specifier: match[1],
-          resolvedPath: match[1].startsWith(".")
-            ? resolveRelativeFile(match[1].replace(/\./g, "/"), fromFile, EXTENSIONS)
-            : null,
+          resolvedPath,
         });
       }
     }
@@ -63,3 +62,21 @@ export const pythonLanguage = {
     return uniqueBy(imports, (item) => `${item.type}:${item.fromFile}:${item.specifier}`);
   },
 };
+
+function resolvePythonModule(specifier, fromFile) {
+  if (!specifier.startsWith(".")) return null;
+
+  const dots = specifier.match(/^\.+/)?.[0].length ?? 0;
+  const modulePart = specifier.slice(dots).replace(/\./g, "/");
+  let baseDir = fromFile;
+
+  for (let i = 0; i < dots; i++) {
+    baseDir = new URL(`file://${baseDir}/..`).pathname;
+  }
+
+  const normalizedBase = baseDir.endsWith("/") ? baseDir.slice(0, -1) : baseDir;
+  const relativeSpecifier = modulePart ? `./${modulePart}` : ".";
+
+  return resolveRelativeFile(relativeSpecifier, `${normalizedBase}/__init__.py`, EXTENSIONS) ||
+    resolveRelativeFile(relativeSpecifier, `${normalizedBase}/module.py`, EXTENSIONS);
+}

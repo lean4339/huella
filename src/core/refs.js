@@ -1,3 +1,5 @@
+import fs from "fs";
+
 export function findReferences(graph, term) {
   const variants = [...new Set(generateTermVariants(term))];
   const exactVariantKeys = new Set(variants.map(normalizeName));
@@ -53,6 +55,7 @@ export function findReferences(graph, term) {
 
       return {
         type: edge.type,
+        language: edge.language,
         fromFile: edge.fromFile,
         specifier: edge.specifier,
         resolvedPath: edge.resolvedPath,
@@ -61,9 +64,11 @@ export function findReferences(graph, term) {
     })
     .filter(Boolean);
 
+  const usageRefs = findUsageReferences(graph, matchingSymbols, matchMode);
+
   const callersByFile = new Map();
-  for (const ref of importRefs) {
-    const key = `${ref.type}::${ref.fromFile}::${ref.specifier}`;
+  for (const ref of [...importRefs, ...usageRefs]) {
+    const key = `${ref.type}::${ref.fromFile}::${ref.specifier || ""}::${ref.lineNumber || ""}`;
     if (!callersByFile.has(key)) callersByFile.set(key, ref);
   }
 
@@ -82,6 +87,69 @@ export function findReferences(graph, term) {
     matchedSymbols: matchingSymbols,
     references: uniqueRefs,
   };
+}
+
+function findUsageReferences(graph, matchingSymbols, matchMode) {
+  const exactNames = [...new Set(
+    matchingSymbols
+      .filter((symbol) => symbol.evidence === "exact_symbol")
+      .map((symbol) => symbol.name)
+  )];
+
+  if (matchMode !== "exact" || exactNames.length === 0) {
+    return [];
+  }
+
+  const definingFiles = new Set(matchingSymbols.map((symbol) => symbol.filePath));
+  const refs = [];
+
+  for (const file of Object.values(graph.files || {})) {
+    if (!file.path || definingFiles.has(file.path)) continue;
+
+    const content = readFile(file.path);
+    if (!content) continue;
+
+    const lines = content.split("\n");
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      const matchedName = exactNames.find((name) =>
+        new RegExp(`\\b${escapeRegExp(name)}\\b`).test(line)
+      );
+
+      if (!matchedName) continue;
+
+      refs.push({
+        type: "usage",
+        language: detectLanguageForFile(file.path, matchingSymbols),
+        fromFile: file.path,
+        specifier: matchedName,
+        resolvedPath: null,
+        lineNumber: index + 1,
+        line: line.trimEnd(),
+        evidence: ["exact_symbol_usage"],
+      });
+    }
+  }
+
+  return refs;
+}
+
+function readFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function detectLanguageForFile(filePath, matchingSymbols) {
+  return matchingSymbols.find((item) => item.filePath === filePath)?.language ||
+    matchingSymbols[0]?.language ||
+    null;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizeName(value) {

@@ -39,7 +39,7 @@ export const phpLanguage = {
   extractImports(content, fromFile) {
     const imports = [];
     const useRe = /^\s*use\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*;/gm;
-    const includeRe = /\b(?:require|require_once|include|include_once)\s*\(?\s*["']([^"']+)["']\s*\)?/gm;
+    const includeRe = /\b(?:require|require_once|include|include_once)\s*(?:\(?\s*__DIR__\s*\.\s*)?["']([^"']+)["']\s*\)?/gm;
 
     let match;
     while ((match = useRe.exec(content)) !== null) {

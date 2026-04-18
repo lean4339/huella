@@ -18,6 +18,7 @@ export function createEmptyGraph(root = "") {
     termCache: {},
     lastDelta: null,
     profiles: {
+      frameworks: [],
       detected: [],
       applied: [],
     },

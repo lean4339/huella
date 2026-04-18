@@ -138,6 +138,40 @@ Done when:
 
 This phase temporarily takes precedence over the original linear phase order.
 
+### Critical Phase: Framework Detection
+
+Objective:
+Detect the web framework layer above language support so later route and entrypoint logic has a stable base.
+
+Priority frameworks:
+
+- `ASP.NET Core`
+- `Express`
+- `Next.js`
+- `NestJS`
+- `FastAPI`
+- `Django`
+- `Flask`
+- `Laravel`
+- `Symfony`
+- `Spring Boot`
+- `Gin`
+- `Fiber`
+- `Echo`
+
+Tasks:
+
+1. Introduce `src/frameworks/`.
+2. Detect frameworks from file layout plus content signals.
+3. Persist detected frameworks in the graph.
+4. Expose framework detection in CLI and JSON output.
+5. Keep framework detection independent from route extraction for now.
+
+Done when:
+
+- a repo can report likely frameworks with evidence and score
+- future entrypoint extraction can branch on detected framework ids
+
 ### Phase 0: Stabilize the Base
 
 Objective:

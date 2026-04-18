@@ -89,9 +89,12 @@ export function updateTermSnapshot(graph, traceResult) {
       catalogFiles: (traceResult.fileCatalog || []).length,
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
+      frameworks: (traceResult.frameworks || []).length,
     },
     at: graph.builtAt,
   };
+
+  graph.profiles.frameworks = traceResult.frameworks || [];
 
   graph.termCache[traceResult.term] = {
     timestamp: graph.builtAt,
@@ -103,6 +106,7 @@ export function updateTermSnapshot(graph, traceResult) {
       catalogFiles: (traceResult.fileCatalog || []).length,
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
+      frameworks: (traceResult.frameworks || []).map((item) => item.id),
     },
   };
 

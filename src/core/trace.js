@@ -3,6 +3,7 @@ import fs from "fs";
 import { scanFilesystem } from "../scanners/filesystem.js";
 import { extractImportsFromCatalog } from "../extractors/imports.js";
 import { extractSymbolsFromCatalog, isSourceFile } from "../extractors/symbols.js";
+import { detectFrameworks } from "../frameworks/detector.js";
 
 function generateTermVariants(term) {
   const variants = new Set();
@@ -172,6 +173,7 @@ export function traceTerm(term, projectDir) {
   const fileCatalog = scanFilesystem(projectDir);
   const symbols = extractSymbolsFromCatalog(fileCatalog);
   const imports = extractImportsFromCatalog(fileCatalog);
+  const frameworks = detectFrameworks(fileCatalog);
   const variants = generateTermVariants(term);
   const files = findFilesWithTerm(fileCatalog, variants);
 
@@ -230,6 +232,7 @@ export function traceTerm(term, projectDir) {
     fileCatalog,
     symbols,
     imports,
+    frameworks,
     hits,
     chains,
     solo,

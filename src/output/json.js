@@ -7,6 +7,7 @@ export function formatTraceJson(result, graphMeta) {
       catalog: result.fileCatalog.length,
       symbols: result.symbols.length,
       imports: result.imports.length,
+      frameworks: result.frameworks.length,
       files: result.hits.length,
       chains: result.chains.length,
       solo: result.solo.length,
@@ -19,6 +20,7 @@ export function formatTraceJson(result, graphMeta) {
         counts: graphMeta.previous.counts,
       } : null,
     } : null,
+    frameworks: result.frameworks,
     chains: result.chains,
     solo: result.solo,
   };

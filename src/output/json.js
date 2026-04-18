@@ -5,6 +5,7 @@ export function formatTraceJson(result, graphMeta) {
     variants: result.variants,
     counts: {
       catalog: result.fileCatalog.length,
+      symbols: result.symbols.length,
       files: result.hits.length,
       chains: result.chains.length,
       solo: result.solo.length,

@@ -22,13 +22,14 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`dir: ${result.projectDir}`);
   lines.push(`variants: ${result.variants.join(", ")}`);
   lines.push(`catalog: ${result.fileCatalog.length}`);
+  lines.push(`symbols: ${result.symbols.length}`);
   lines.push(`files: ${result.hits.length}`);
   lines.push(`chains: ${result.chains.length}`);
   lines.push(`solo: ${result.solo.length}`);
 
   if (graphMeta) {
     lines.push(`graph: ${graphMeta.graphPath}`);
-    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}`);
+    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}`);
   }
 
   if (result.chains.length > 0) {

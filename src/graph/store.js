@@ -56,6 +56,20 @@ export function updateTermSnapshot(graph, traceResult) {
       },
     ])
   );
+  graph.symbols = Object.fromEntries(
+    (traceResult.symbols || []).map((symbol) => [
+      `${path.relative(traceResult.projectDir, symbol.filePath)}::${symbol.name}::${symbol.startLine}`,
+      {
+        name: symbol.name,
+        kind: symbol.kind,
+        filePath: symbol.filePath,
+        startLine: symbol.startLine,
+        endLine: symbol.endLine,
+        exported: symbol.exported,
+        snippet: symbol.snippet,
+      },
+    ])
+  );
   graph.lastDelta = {
     term: traceResult.term,
     counts: {
@@ -65,6 +79,7 @@ export function updateTermSnapshot(graph, traceResult) {
     },
     scan: {
       catalogFiles: (traceResult.fileCatalog || []).length,
+      symbols: (traceResult.symbols || []).length,
     },
     at: graph.builtAt,
   };
@@ -77,6 +92,7 @@ export function updateTermSnapshot(graph, traceResult) {
       projectDir: traceResult.projectDir,
       variants: traceResult.variants,
       catalogFiles: (traceResult.fileCatalog || []).length,
+      symbols: (traceResult.symbols || []).length,
     },
   };
 

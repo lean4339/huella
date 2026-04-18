@@ -115,6 +115,7 @@ function analyzeRepo(repoDir) {
     ports: dedupeNumbers(apps.flatMap((app) => app.ports || [])),
     endpoints: detectEndpoints(fileCatalog),
     configTargets: detectConfigTargets(fileCatalog),
+    outboundTargets: detectOutboundTargets(fileCatalog),
   };
 }
 
@@ -252,7 +253,8 @@ function findConfigConnections(repos) {
   const repoTokens = buildDistinctRepoTokens(repos);
 
   for (const sourceRepo of repos) {
-    for (const target of sourceRepo.configTargets) {
+    const repoTargets = [...(sourceRepo.configTargets || []), ...(sourceRepo.outboundTargets || [])];
+    for (const target of repoTargets) {
       const candidates = repos.filter((repo) =>
         repo.root !== sourceRepo.root && matchesRepoTarget(repo, target, repoTokens.get(repo.root) || [])
       );
@@ -344,6 +346,40 @@ function detectConfigTargets(fileCatalog) {
     if (!content) continue;
 
     targets.push(...extractTargetsFromContent(file.relPath, content));
+  }
+
+  return dedupeTargets(targets);
+}
+
+function detectOutboundTargets(fileCatalog) {
+  const targets = [];
+
+  for (const file of fileCatalog) {
+    if (!/\.(cs|ts|js|py|php)$/i.test(file.relPath)) continue;
+    const content = readFile(file.path);
+    if (!content) continue;
+
+    const directUrlRe = /\b(?:HttpRequestMessage|new\s+Uri|SendAsync|GetAsync|PostAsync|PutAsync|PatchAsync|DeleteAsync)\b[\s\S]{0,120}?["'](https?:\/\/[^"']+|http:\/\/localhost:\d+[^"']*)["']/g;
+    let match;
+    while ((match = directUrlRe.exec(content)) !== null) {
+      targets.push({
+        file: file.relPath,
+        variable: "code_target",
+        value: normalizeTargetValue(match[1]),
+      });
+    }
+
+    const configRefRe = /\bGetSection\("([^"]+)"\)\["([^"]+)"\]|\bConfiguration\["([^"]+)"\]|\bGetEnvironmentVariable\("([^"]+)"\)/g;
+    while ((match = configRefRe.exec(content)) !== null) {
+      const variable = match[2] || match[3] || match[4];
+      if (!variable) continue;
+      if (!/(API|URL|Url|BaseAddress|BaseUrl|Endpoint|Uri|URI|Host|Origin|TowerURL|ProductTowerURL)/.test(variable)) continue;
+      targets.push({
+        file: file.relPath,
+        variable,
+        value: "",
+      });
+    }
   }
 
   return dedupeTargets(targets);

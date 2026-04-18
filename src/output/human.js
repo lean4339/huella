@@ -57,3 +57,31 @@ export function formatTraceHuman(result, graphMeta) {
 
   return lines.join("\n");
 }
+
+export function formatDefinitionsHuman(result, projectDir) {
+  const lines = [];
+  lines.push(`term: ${result.term}`);
+  lines.push(`variants: ${result.variants.join(", ")}`);
+  lines.push(`definitions: ${result.matches.length}`);
+
+  if (result.matches.length === 0) {
+    lines.push("");
+    lines.push("No definitions found.");
+    return lines.join("\n");
+  }
+
+  lines.push("");
+  lines.push("Definitions");
+  for (const match of result.matches.slice(0, 20)) {
+    lines.push(`  ${formatPath(match.filePath, projectDir)}`);
+    lines.push(`    symbol: ${match.name}`);
+    lines.push(`    kind: ${match.kind}${match.exported ? "  exported" : ""}`);
+    lines.push(`    lines: ${match.startLine}-${match.endLine}`);
+    if (match.snippet) {
+      const firstLine = match.snippet.split("\n")[0];
+      lines.push(`    > ${firstLine}`);
+    }
+  }
+
+  return lines.join("\n");
+}

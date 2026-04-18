@@ -22,3 +22,12 @@ export function formatTraceJson(result, graphMeta) {
     solo: result.solo,
   };
 }
+
+export function formatDefinitionsJson(result) {
+  return {
+    term: result.term,
+    variants: result.variants,
+    count: result.matches.length,
+    matches: result.matches,
+  };
+}

@@ -37,9 +37,10 @@ export function detectEndpoints(fileCatalog) {
 
 function extractAspNetEndpoints(relPath, content) {
   const endpoints = [];
-  const controllerMatch = content.match(/\[Route\("([^"]+)"\)\][\s\S]*?class\s+([A-Za-z_][\w]*)/m);
-  const routePrefix = controllerMatch?.[1] || null;
-  const controllerName = controllerMatch?.[2]?.replace(/Controller$/, "") || null;
+  const routeMatch = content.match(/\[Route\("([^"]+)"\)\]/m);
+  const classMatch = content.match(/class\s+([A-Za-z_][\w]*)\b/m);
+  const routePrefix = routeMatch?.[1] || null;
+  const controllerName = classMatch?.[1]?.replace(/Controller$/, "") || null;
 
   const methodRe = /\[(Http(Get|Post|Put|Patch|Delete))(?:\("([^"]*)"\))?\][\s\S]{0,240}?public\s+(?:async\s+)?(?:Task(?:<[^>]+>)?|ActionResult(?:<[^>]+>)?|IActionResult|[A-Za-z_][\w<>]*)\s+([A-Za-z_][\w]*)/g;
   let match;

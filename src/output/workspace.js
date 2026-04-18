@@ -59,6 +59,27 @@ export function formatWorkspaceHuman(result, graphMeta) {
     }
   }
 
+  if (result.networkPaths?.length > 0) {
+    lines.push("");
+    lines.push("Network Paths");
+    for (const pathItem of result.networkPaths.slice(0, 20)) {
+      if (pathItem.type === "local_flow") {
+        lines.push(`  ${pathItem.fromRepo}: ${pathItem.from} -> ${pathItem.route}`);
+        lines.push(`    endpoint: ${pathItem.endpoint}`);
+        continue;
+      }
+
+      if (pathItem.type === "repo_hop") {
+        lines.push(`  ${pathItem.kind}: ${pathItem.fromRepo} -> ${pathItem.toRepo}`);
+        lines.push(`    via: ${pathItem.via}`);
+        lines.push(`    target endpoints: ${pathItem.endpointCount}`);
+        if (pathItem.endpointSample?.length) {
+          lines.push(`    sample: ${pathItem.endpointSample.join(", ")}`);
+        }
+      }
+    }
+  }
+
   return lines.join("\n");
 }
 
@@ -69,5 +90,6 @@ export function formatWorkspaceJson(result, graphMeta) {
     graph: graphMeta ? { path: graphMeta.graphPath } : null,
     repos: result.repos,
     connections: result.connections,
+    networkPaths: result.networkPaths,
   };
 }

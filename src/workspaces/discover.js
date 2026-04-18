@@ -3,6 +3,10 @@ import path from "path";
 import { scanFilesystem } from "../scanners/filesystem.js";
 import { detectFrameworks } from "../frameworks/detector.js";
 import { detectEndpoints } from "../endpoints/detector.js";
+import { extractSymbolsFromCatalog, extractCallsFromCatalog } from "../extractors/symbols.js";
+import { detectUiSurfaces } from "../ui/detector.js";
+import { detectUiEdges } from "../ui/edges.js";
+import { detectUiEndpointEdges } from "../endpoints/links.js";
 
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -44,12 +48,14 @@ export function discoverWorkspace(rootDir, options = {}) {
     ...findConfigConnections(repos),
     ...findSharedEndpointTargets(repos),
   ];
+  const networkPaths = buildNetworkPaths(repos, connections);
 
   return {
     rootDir,
     repoCount: repos.length,
     repos,
     connections,
+    networkPaths,
   };
 }
 
@@ -105,6 +111,12 @@ function analyzeRepo(repoDir) {
   const fileCatalog = scanFilesystem(repoDir, { maxFiles: 3000 });
   const frameworks = detectFrameworks(fileCatalog);
   const apps = detectApps(repoDir, fileCatalog, frameworks);
+  const symbols = extractSymbolsFromCatalog(fileCatalog);
+  const calls = extractCallsFromCatalog(fileCatalog);
+  const uiSurfaces = detectUiSurfaces(fileCatalog);
+  const uiEdges = detectUiEdges(fileCatalog, uiSurfaces, symbols, calls);
+  const endpoints = detectEndpoints(fileCatalog);
+  const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
 
   return {
     root: repoDir,
@@ -113,7 +125,8 @@ function analyzeRepo(repoDir) {
     frameworks,
     apps,
     ports: dedupeNumbers(apps.flatMap((app) => app.ports || [])),
-    endpoints: detectEndpoints(fileCatalog),
+    endpoints,
+    uiEndpointEdges,
     configTargets: detectConfigTargets(fileCatalog),
     outboundTargets: detectOutboundTargets(fileCatalog),
   };
@@ -305,6 +318,46 @@ function findSharedEndpointTargets(repos) {
   }
 
   return shared.sort((a, b) => a.target.name.localeCompare(b.target.name));
+}
+
+function buildNetworkPaths(repos, connections) {
+  const paths = [];
+
+  for (const repo of repos) {
+    for (const edge of repo.uiEndpointEdges || []) {
+      const endpoint = (repo.endpoints || []).find((item) => item.key === edge.to);
+      if (!endpoint) continue;
+      paths.push({
+        type: "local_flow",
+        fromRepo: repo.name,
+        fromRoot: repo.root,
+        from: edge.from,
+        toRepo: repo.name,
+        toRoot: repo.root,
+        endpoint: endpoint.key,
+        route: `${endpoint.method} ${endpoint.route}`,
+        evidence: edge.evidence,
+      });
+    }
+  }
+
+  for (const connection of connections.filter((item) => item.type === "config_target")) {
+    const targetRepo = repos.find((repo) => repo.root === connection.to.root);
+    if (!targetRepo) continue;
+    paths.push({
+      type: "repo_hop",
+      kind: connection.kind,
+      fromRepo: connection.from.name,
+      fromRoot: connection.from.root,
+      toRepo: connection.to.name,
+      toRoot: connection.to.root,
+      via: `${connection.variable}=${connection.value}`,
+      endpointCount: targetRepo.endpoints.length,
+      endpointSample: targetRepo.endpoints.slice(0, 5).map((item) => item.key),
+    });
+  }
+
+  return paths;
 }
 
 function dedupeApps(apps) {

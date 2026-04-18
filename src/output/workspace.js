@@ -27,14 +27,24 @@ export function formatWorkspaceHuman(result, graphMeta) {
     lines.push(`    files: ${repo.files}`);
     lines.push(`    frameworks: ${repo.frameworks.length > 0 ? repo.frameworks.map((item) => `${item.id}(${item.score})`).join(", ") : "none"}`);
     lines.push(`    apps: ${repo.apps.length}`);
+    lines.push(`    config targets: ${repo.configTargets?.length ?? 0}`);
   }
 
   if (result.connections.length > 0) {
     lines.push("");
     lines.push("Connections");
     for (const connection of result.connections) {
-      lines.push(`  ${connection.type}: ${connection.framework}`);
-      lines.push(`    repos: ${connection.repos.map((repo) => `${repo.name} [${formatPath(repo.root, result.rootDir)}]`).join(", ")}`);
+      if (connection.type === "shared_framework") {
+        lines.push(`  ${connection.type}: ${connection.framework}`);
+        lines.push(`    repos: ${connection.repos.map((repo) => `${repo.name} [${formatPath(repo.root, result.rootDir)}]`).join(", ")}`);
+        continue;
+      }
+
+      if (connection.type === "config_target") {
+        lines.push(`  ${connection.type}: ${connection.from.name} -> ${connection.to.name}`);
+        lines.push(`    via: ${connection.variable}=${connection.value}`);
+        lines.push(`    source: ${connection.source}`);
+      }
     }
   }
 

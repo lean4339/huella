@@ -123,6 +123,8 @@ export function detectFrameworks(fileCatalog) {
   const evidence = new Map();
 
   for (const file of fileCatalog) {
+    if (isFixtureLikePath(file.relPath)) continue;
+
     const relevantRules = FRAMEWORK_RULES.filter((rule) =>
       !rule.language || matchesLanguage(file, rule.language)
     );
@@ -188,4 +190,8 @@ function readFile(filePath) {
   } catch {
     return null;
   }
+}
+
+function isFixtureLikePath(relPath) {
+  return /(^|\/)(tests?\/fixtures|fixtures|examples|samples|__tests__)(\/|$)/i.test(relPath);
 }

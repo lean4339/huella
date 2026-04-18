@@ -128,6 +128,7 @@ function analyzeRepo(repoDir) {
     endpoints,
     uiEndpointEdges,
     eventEdges: detectEventEdges(fileCatalog, endpoints),
+    entryFlows: detectEntryFlows(fileCatalog, endpoints, symbols, calls),
     configTargets: detectConfigTargets(fileCatalog),
     outboundTargets: detectOutboundTargets(fileCatalog),
   };
@@ -371,7 +372,78 @@ function buildNetworkPaths(repos, connections) {
     }
   }
 
+  for (const repo of repos) {
+    for (const flow of repo.entryFlows || []) {
+      paths.push({
+        type: "entry_flow",
+        repo: repo.name,
+        root: repo.root,
+        entry: flow.entry,
+        steps: flow.steps,
+      });
+    }
+  }
+
   return paths;
+}
+
+function detectEntryFlows(fileCatalog, endpoints, symbols, calls) {
+  const flows = [];
+  const relByPath = new Map(fileCatalog.map((file) => [file.path, file.relPath]));
+  const symbolByKey = new Map();
+  const symbolsByName = new Map();
+
+  for (const symbol of symbols) {
+    symbolByKey.set(`${relByPath.get(symbol.filePath) || symbol.filePath}#${symbol.name}`, symbol);
+    const bucket = symbolsByName.get(symbol.name) || [];
+    bucket.push(symbol);
+    symbolsByName.set(symbol.name, bucket);
+  }
+
+  for (const endpoint of endpoints.slice(0, 200)) {
+    const entryName = endpoint.action;
+    if (!entryName) continue;
+
+    const endpointFile = endpoint.file;
+    const entrySymbol =
+      symbolByKey.get(`${endpointFile}#${entryName}`) ||
+      (symbolsByName.get(entryName) || []).find((item) => (relByPath.get(item.filePath) || item.filePath) === endpointFile);
+
+    if (!entrySymbol) continue;
+
+    const steps = [`${endpoint.method} ${endpoint.route}`];
+    const visited = new Set([`${endpointFile}#${entryName}`]);
+    let frontier = [{ file: entrySymbol.filePath, name: entryName }];
+
+    for (let depth = 0; depth < 3; depth++) {
+      const next = [];
+      for (const node of frontier) {
+        const outgoing = calls.filter((item) => item.fromFile === node.file && item.callerName === node.name).slice(0, 8);
+        for (const edge of outgoing) {
+          const targets = symbolsByName.get(edge.calleeName) || [];
+          const target = targets[0];
+          if (!target) continue;
+          const relTarget = relByPath.get(target.filePath) || target.filePath;
+          const key = `${relTarget}#${target.name}`;
+          if (visited.has(key)) continue;
+          visited.add(key);
+          steps.push(`${relTarget}#${target.name}`);
+          next.push({ file: target.filePath, name: target.name });
+        }
+      }
+      frontier = next;
+      if (frontier.length === 0) break;
+    }
+
+    if (steps.length > 1) {
+      flows.push({
+        entry: `${endpoint.file}#${entryName}`,
+        steps,
+      });
+    }
+  }
+
+  return flows.slice(0, 80);
 }
 
 function detectEventEdges(fileCatalog, endpoints) {

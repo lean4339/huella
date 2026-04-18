@@ -82,6 +82,12 @@ export function formatWorkspaceHuman(result, graphMeta) {
       if (pathItem.type === "event_flow") {
         lines.push(`  ${pathItem.repo}: ${pathItem.from} -> ${pathItem.to}`);
         lines.push(`    via: ${pathItem.via}`);
+        continue;
+      }
+
+      if (pathItem.type === "entry_flow") {
+        lines.push(`  ${pathItem.repo}: ${pathItem.entry}`);
+        lines.push(`    flow: ${pathItem.steps.join(" -> ")}`);
       }
     }
   }

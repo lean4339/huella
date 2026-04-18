@@ -98,6 +98,12 @@ export function updateTermSnapshot(graph, traceResult) {
     specifier: item.specifier,
     resolvedPath: item.resolvedPath,
   }));
+  graph.edges.ui = (traceResult.uiEdges || []).map((item) => ({
+    type: item.type,
+    from: item.from,
+    to: item.to,
+    evidence: item.evidence,
+  }));
   graph.lastDelta = {
     term: traceResult.term,
     counts: {
@@ -111,6 +117,7 @@ export function updateTermSnapshot(graph, traceResult) {
       imports: (traceResult.imports || []).length,
       frameworks: (traceResult.frameworks || []).length,
       uiSurfaces: (traceResult.uiSurfaces || []).length,
+      uiEdges: (traceResult.uiEdges || []).length,
     },
     at: graph.builtAt,
   };
@@ -130,6 +137,7 @@ export function updateTermSnapshot(graph, traceResult) {
       imports: (traceResult.imports || []).length,
       frameworks: (traceResult.frameworks || []).map((item) => item.id),
       uiSurfaces: (traceResult.uiSurfaces || []).map((item) => item.type),
+      uiEdges: (traceResult.uiEdges || []).map((item) => item.type),
     },
   };
 

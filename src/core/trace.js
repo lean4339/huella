@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { scanFilesystem } from "../scanners/filesystem.js";
+import { extractImportsFromCatalog } from "../extractors/imports.js";
 import { extractSymbolsFromCatalog, isSourceFile } from "../extractors/symbols.js";
 
 function generateTermVariants(term) {
@@ -170,6 +171,7 @@ function getMatchingLines(content, variants) {
 export function traceTerm(term, projectDir) {
   const fileCatalog = scanFilesystem(projectDir);
   const symbols = extractSymbolsFromCatalog(fileCatalog);
+  const imports = extractImportsFromCatalog(fileCatalog);
   const variants = generateTermVariants(term);
   const files = findFilesWithTerm(fileCatalog, variants);
 
@@ -227,6 +229,7 @@ export function traceTerm(term, projectDir) {
     variants,
     fileCatalog,
     symbols,
+    imports,
     hits,
     chains,
     solo,

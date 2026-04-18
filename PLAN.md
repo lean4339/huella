@@ -448,6 +448,59 @@ Tests:
 
 ---
 
+## V2 Roadmap
+
+These items are intentionally out of V1 scope, but they are strong next steps based on how `tower-mcp` currently reuses `tracer` as a library instead of only as a command.
+
+### Result Ranking
+
+- add ranking and prioritization for trace results
+- boost entrypoints, api barrels, handlers, routes, and exported symbols
+- de-prioritize docs and broad text matches unless explicitly requested
+
+### Reusable Core Primitives
+
+Turn `huella` into a set of reusable reading primitives, not only a CLI:
+
+- `scanFilesystem`
+- `extractSymbols`
+- `findDefinitions`
+- `traceTerm`
+- `extractImports`
+- `findReferences`
+- `inferConnections`
+- `queryImpact`
+
+### Reverse and Impact Queries
+
+After imports and call edges exist:
+
+- add `huella refs <symbol>`
+- add `huella reverse <symbol>`
+- add `huella impact <symbol|file|config>`
+
+### Config and Runtime Topology
+
+Build the next layer of runtime-aware reading:
+
+- parse `.env*`, compose files, scripts, and framework configs
+- infer service-to-service relationships
+- infer app-to-endpoint relationships
+- track config-driven edges in the graph
+
+### Integrations Outside the Core
+
+Keep these outside the generic core and build them as adapters:
+
+- Jira ticket readers
+- ticket term extraction
+- QA route/context helpers
+- project-specific architecture hints
+
+This follows the lesson from `tower-mcp`: some behaviors are better modeled as integrations over a reusable reading engine than as core logic.
+
+---
+
 ## Function-by-Function Delivery Order
 
 This is the implementation order to follow.

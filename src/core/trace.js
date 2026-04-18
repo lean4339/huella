@@ -180,7 +180,7 @@ export function traceTerm(term, projectDir) {
   const imports = extractImportsFromCatalog(fileCatalog);
   const frameworks = detectFrameworks(fileCatalog);
   const uiSurfaces = detectUiSurfaces(fileCatalog);
-  const uiEdges = detectUiEdges(fileCatalog, uiSurfaces);
+  const uiEdges = detectUiEdges(fileCatalog, uiSurfaces, symbols, calls);
   const endpoints = detectEndpoints(fileCatalog);
   const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints);
   const variants = generateTermVariants(term);

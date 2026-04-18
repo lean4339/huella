@@ -1,9 +1,10 @@
 import fs from "fs";
 
-export function detectUiEdges(fileCatalog, uiSurfaces) {
+export function detectUiEdges(fileCatalog, uiSurfaces, symbols = [], calls = []) {
   const edges = [];
   const viewSurfaces = uiSurfaces.filter((item) => item.type === "razor-view" || item.type === "template-view");
   const viewPaths = new Set(viewSurfaces.map((item) => item.relPath));
+  const symbolIndex = buildSymbolIndex(symbols, fileCatalog);
 
   const spaEntries = uiSurfaces.filter((item) => item.type === "spa-entry");
   const spaAppShells = uiSurfaces.filter((item) => item.type === "spa-app-shell");
@@ -84,31 +85,48 @@ export function detectUiEdges(fileCatalog, uiSurfaces) {
     if (!content) continue;
 
     const controllerName = file.relPath.split("/").pop().replace(/Controller\.cs$/i, "");
-    const explicitViewRe = /return\s+(?:PartialView|View)\(\s*"(?:(?:~\/)?Views\/)?([^"()]+?)(?:\.cshtml)?"/g;
-    let match;
+    const actions = extractControllerActions(content);
 
-    while ((match = explicitViewRe.exec(content)) !== null) {
-      const target = normalizeMvcViewPath(match[1]);
-      const resolved = findMatchingView(target, viewPaths);
-      if (!resolved) continue;
-      edges.push({
-        type: "controller_renders_view",
-        from: file.relPath,
-        to: resolved,
-        evidence: ["explicit_view"],
-      });
-    }
+    for (const action of actions) {
+      const explicitViewRe = /return\s+(?:PartialView|View)\(\s*"(?:(?:~\/)?Views\/)?([^"()]+?)(?:\.cshtml)?"/g;
+      let match;
 
-    const implicitViewRe = /return\s+View\(\s*\)/g;
-    if (implicitViewRe.test(content)) {
-      const resolved = findImplicitControllerView(controllerName, viewPaths);
-      if (resolved) {
+      while ((match = explicitViewRe.exec(action.body)) !== null) {
+        const target = normalizeMvcViewPath(match[1]);
+        const resolved = findMatchingView(target, viewPaths);
+        if (!resolved) continue;
         edges.push({
-          type: "controller_renders_view",
-          from: file.relPath,
+          type: "controller_action_renders_view",
+          from: `${file.relPath}#${action.name}`,
           to: resolved,
-          evidence: ["implicit_view"],
+          evidence: ["explicit_view"],
         });
+      }
+
+      const implicitViewRe = /return\s+View\(\s*\)/g;
+      if (implicitViewRe.test(action.body)) {
+        const resolved = findImplicitControllerView(controllerName, viewPaths, action.name);
+        if (resolved) {
+          edges.push({
+            type: "controller_action_renders_view",
+            from: `${file.relPath}#${action.name}`,
+            to: resolved,
+            evidence: ["implicit_view"],
+          });
+        }
+      }
+
+      const actionCalls = calls.filter((item) => item.fromFile === file.path && item.callerName === action.name);
+      for (const call of actionCalls.slice(0, 12)) {
+        const targets = symbolIndex.get(call.calleeName) || [];
+        for (const target of targets.slice(0, 3)) {
+          edges.push({
+            type: "controller_action_calls",
+            from: `${file.relPath}#${action.name}`,
+            to: `${target.relPath}#${target.name}`,
+            evidence: ["call_graph"],
+          });
+        }
       }
     }
   }
@@ -157,9 +175,59 @@ function findMatchingView(target, viewPaths) {
   return null;
 }
 
-function findImplicitControllerView(controllerName, viewPaths) {
-  const candidate = [...viewPaths].find((item) => item.endsWith(`/Views/${controllerName}/Index.cshtml`) || item.endsWith(`/${controllerName}/Index.cshtml`));
+function findImplicitControllerView(controllerName, viewPaths, actionName = "Index") {
+  const candidate = [...viewPaths].find((item) =>
+    item.endsWith(`/Views/${controllerName}/${actionName}.cshtml`) ||
+    item.endsWith(`/${controllerName}/${actionName}.cshtml`) ||
+    (actionName === "Index" &&
+      (item.endsWith(`/Views/${controllerName}/Index.cshtml`) || item.endsWith(`/${controllerName}/Index.cshtml`)))
+  );
   return candidate || null;
+}
+
+function extractControllerActions(content) {
+  const actions = [];
+  const actionRe = /^\s*(?:\[[^\]]+\]\s*)*(?:public\s+)(?:async\s+)?(?:Task(?:<[^>]+>)?|ActionResult(?:<[^>]+>)?|IActionResult)\s+([A-Za-z_][\w]*)\s*\([^)]*\)\s*\{/gm;
+  let match;
+
+  while ((match = actionRe.exec(content)) !== null) {
+    const start = match.index;
+    let depth = 0;
+    let opened = false;
+    let end = start;
+
+    for (let i = start; i < content.length; i++) {
+      const ch = content[i];
+      if (ch === "{") {
+        depth++;
+        opened = true;
+      } else if (ch === "}") {
+        depth--;
+      }
+      if (opened && depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+
+    actions.push({ name: match[1], body: content.slice(start, end) });
+  }
+
+  return actions;
+}
+
+function buildSymbolIndex(symbols, fileCatalog) {
+  const relByPath = new Map(fileCatalog.map((file) => [file.path, file.relPath]));
+  const index = new Map();
+  for (const symbol of symbols) {
+    const bucket = index.get(symbol.name) || [];
+    bucket.push({
+      ...symbol,
+      relPath: relByPath.get(symbol.filePath) || symbol.filePath,
+    });
+    index.set(symbol.name, bucket);
+  }
+  return index;
 }
 
 function dedupeEdges(items) {

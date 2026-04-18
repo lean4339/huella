@@ -5,10 +5,11 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
   const wrapperSpecs = collectHttpWrapperSpecs(fileCatalog);
 
   for (const file of fileCatalog) {
-    if (!isUiRelevantFile(file.relPath)) continue;
+    if (!isNetworkRelevantFile(file.relPath)) continue;
 
     const content = readFile(file.path);
     if (!content) continue;
+    const edgeType = isUiRelevantFile(file.relPath) ? "ui_calls_http_endpoint" : "code_calls_http_endpoint";
 
     const httpClientRe = /\bhttpClient\s*\(\s*[^,]+,\s*['"`]([^'"`]+)['"`]\s*,\s*['"`]([^'"`]+)['"`]/g;
     let match;
@@ -26,7 +27,7 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
       const target = findEndpointByRoute(endpoints, match[1]);
       if (!target) continue;
       edges.push({
-        type: "ui_calls_http_endpoint",
+        type: edgeType,
         from: file.relPath,
         to: target.key,
         evidence: ["fetch"],
@@ -38,7 +39,7 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
       const target = findEndpointByRoute(endpoints, match[2], match[1].toUpperCase());
       if (!target) continue;
       edges.push({
-        type: "ui_calls_http_endpoint",
+        type: edgeType,
         from: file.relPath,
         to: target.key,
         evidence: ["axios"],
@@ -52,7 +53,7 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
         const target = findEndpointByRoute(endpoints, match[2], match[1].toUpperCase());
         if (!target) continue;
         edges.push({
-          type: "ui_calls_http_endpoint",
+          type: edgeType,
           from: file.relPath,
           to: target.key,
           evidence: ["axios_client"],
@@ -66,7 +67,7 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
       const target = findEndpointByRoute(endpoints, `/api${rawPath}`, match[1].toUpperCase());
       if (!target) continue;
       edges.push({
-        type: "ui_calls_http_endpoint",
+        type: edgeType,
         from: file.relPath,
         to: target.key,
         evidence: ["req_wrapper"],
@@ -81,12 +82,49 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
         const target = findEndpointByRoute(endpoints, resolved.route, resolved.method);
         if (!target) continue;
         edges.push({
-          type: "ui_calls_http_endpoint",
+          type: edgeType,
           from: file.relPath,
           to: target.key,
           evidence: [`http_wrapper:${spec.name}`],
         });
       }
+    }
+
+    const csharpClientRe = /\.(GetAsync|PostAsync|PutAsync|PatchAsync|DeleteAsync)\s*\(\s*["']([^"']+)["']/g;
+    while ((match = csharpClientRe.exec(content)) !== null) {
+      const method = match[1].replace(/Async$/, "").replace(/^./, (c) => c.toUpperCase());
+      const target = findEndpointByRoute(endpoints, match[2], method.toUpperCase());
+      if (!target) continue;
+      edges.push({
+        type: edgeType,
+        from: file.relPath,
+        to: target.key,
+        evidence: ["csharp_httpclient"],
+      });
+    }
+
+    const csharpRequestRe = /new\s+HttpRequestMessage\s*\(\s*HttpMethod\.(Get|Post|Put|Patch|Delete)\s*,\s*["']([^"']+)["']/g;
+    while ((match = csharpRequestRe.exec(content)) !== null) {
+      const target = findEndpointByRoute(endpoints, match[2], match[1].toUpperCase());
+      if (!target) continue;
+      edges.push({
+        type: edgeType,
+        from: file.relPath,
+        to: target.key,
+        evidence: ["csharp_request_message"],
+      });
+    }
+
+    const pythonClientRe = /\b(?:requests|httpx)\.(get|post|put|patch|delete)\s*\(\s*["']([^"']+)["']/g;
+    while ((match = pythonClientRe.exec(content)) !== null) {
+      const target = findEndpointByRoute(endpoints, match[2], match[1].toUpperCase());
+      if (!target) continue;
+      edges.push({
+        type: edgeType,
+        from: file.relPath,
+        to: target.key,
+        evidence: ["python_http_client"],
+      });
     }
 
   }
@@ -224,6 +262,12 @@ function isUiRelevantFile(relPath) {
   return /(^|\/)(Views|views|templates|pages|app|components|frontend\/src|public)\//i.test(relPath) ||
     /^src\/.+\.(ts|tsx|js|jsx|html)$/i.test(relPath) ||
     /\.(cshtml|ejs|pug|hbs|mustache|twig|jsp|jspx|ftl|vm|tsx|jsx|html)$/i.test(relPath);
+}
+
+function isNetworkRelevantFile(relPath) {
+  return isUiRelevantFile(relPath) ||
+    /(^|\/)(controllers?|services?|handlers?|providers?|clients?|api|server|routers?)\//i.test(relPath) ||
+    /\.(cs|py|php|ts|tsx|js|jsx)$/i.test(relPath);
 }
 
 function dedupeEdges(items) {

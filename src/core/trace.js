@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { scanFilesystem } from "../scanners/filesystem.js";
 import { extractImportsFromCatalog } from "../extractors/imports.js";
-import { extractSymbolsFromCatalog, isSourceFile } from "../extractors/symbols.js";
+import { extractSymbolsFromCatalog, extractCallsFromCatalog, isSourceFile } from "../extractors/symbols.js";
 import { detectFrameworks } from "../frameworks/detector.js";
 import { detectUiSurfaces } from "../ui/detector.js";
 import { detectUiEdges } from "../ui/edges.js";
@@ -176,6 +176,7 @@ function getMatchingLines(content, variants) {
 export function traceTerm(term, projectDir) {
   const fileCatalog = scanFilesystem(projectDir);
   const symbols = extractSymbolsFromCatalog(fileCatalog);
+  const calls = extractCallsFromCatalog(fileCatalog);
   const imports = extractImportsFromCatalog(fileCatalog);
   const frameworks = detectFrameworks(fileCatalog);
   const uiSurfaces = detectUiSurfaces(fileCatalog);
@@ -198,6 +199,7 @@ export function traceTerm(term, projectDir) {
     hits.push({ filePath, block, lines, pathMatched, ...layerInfo });
   }
 
+  expandHitsByCalls(hits, symbols, calls);
   hits.sort((a, b) => a.order - b.order || a.filePath.localeCompare(b.filePath));
 
   const inChain = new Set();
@@ -213,7 +215,10 @@ export function traceTerm(term, projectDir) {
       const callee = hits[j];
       if (callee.order <= caller.order) continue;
       if (!callee.block?.funcName) continue;
-      if (new RegExp(`\\b${callee.block.funcName}\\s*\\(`).test(caller.block.code)) {
+      if (
+        hasCallEdge(calls, caller.filePath, caller.block.funcName, callee.block.funcName) ||
+        new RegExp(`\\b${callee.block.funcName}\\s*\\(`).test(caller.block.code)
+      ) {
         chain.push(callee);
       }
     }
@@ -239,6 +244,7 @@ export function traceTerm(term, projectDir) {
     variants,
     fileCatalog,
     symbols,
+    calls,
     imports,
     frameworks,
     uiSurfaces,
@@ -249,4 +255,62 @@ export function traceTerm(term, projectDir) {
     chains,
     solo,
   };
+}
+
+function hasCallEdge(calls, fromFile, callerName, calleeName) {
+  return calls.some((item) =>
+    item.fromFile === fromFile &&
+    item.callerName === callerName &&
+    item.calleeName === calleeName
+  );
+}
+
+function expandHitsByCalls(hits, symbols, calls) {
+  const seen = new Set(hits.map((hit) => `${hit.filePath}::${hit.block?.funcName || ""}`));
+  const symbolIndex = new Map();
+
+  for (const symbol of symbols) {
+    const bucket = symbolIndex.get(symbol.name) || [];
+    bucket.push(symbol);
+    symbolIndex.set(symbol.name, bucket);
+  }
+
+  const sourceHits = hits.slice(0, 20);
+  for (const hit of sourceHits) {
+    const funcName = hit.block?.funcName;
+    if (!funcName) continue;
+
+    const relatedCalls = calls.filter((item) =>
+      (item.fromFile === hit.filePath && item.callerName === funcName) ||
+      item.calleeName === funcName
+    ).slice(0, 12);
+
+    for (const edge of relatedCalls) {
+      const relatedSymbols =
+        edge.fromFile === hit.filePath && edge.callerName === funcName
+          ? (symbolIndex.get(edge.calleeName) || [])
+          : (symbolIndex.get(edge.callerName) || []);
+
+      for (const symbol of relatedSymbols.slice(0, 3)) {
+        const key = `${symbol.filePath}::${symbol.name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const layerInfo = detectLayer(symbol.filePath);
+        hits.push({
+          filePath: symbol.filePath,
+          block: {
+            funcName: symbol.name,
+            startLine: symbol.startLine,
+            endLine: symbol.endLine,
+            code: symbol.snippet,
+            truncated: false,
+          },
+          lines: [],
+          pathMatched: false,
+          viaCall: edge.fromFile === hit.filePath ? "outbound" : "inbound",
+          ...layerInfo,
+        });
+      }
+    }
+  }
 }

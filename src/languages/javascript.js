@@ -84,4 +84,29 @@ export const javascriptLanguage = {
 
     return imports;
   },
+  extractCalls(content, filePath, symbols) {
+    return extractCallsFromSymbols(filePath, symbols, /\b(?:await\s+)?(?:[A-Za-z_$][\w$]*\.)?([A-Za-z_$][\w$]*)\s*\(/g);
+  },
 };
+
+function extractCallsFromSymbols(filePath, symbols, regex) {
+  const calls = [];
+  const ignored = new Set(["if", "for", "while", "switch", "catch", "return", "typeof", "delete", "new", "super"]);
+
+  for (const symbol of symbols) {
+    const snippet = symbol.snippet || "";
+    let match;
+    while ((match = regex.exec(snippet)) !== null) {
+      const callee = match[1];
+      if (!callee || callee === symbol.name || ignored.has(callee)) continue;
+      calls.push({
+        type: "call",
+        fromFile: filePath,
+        callerName: symbol.name,
+        calleeName: callee,
+      });
+    }
+  }
+
+  return calls;
+}

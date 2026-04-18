@@ -98,6 +98,13 @@ export function updateTermSnapshot(graph, traceResult) {
     specifier: item.specifier,
     resolvedPath: item.resolvedPath,
   }));
+  graph.edges.calls = (traceResult.calls || []).map((item) => ({
+    type: item.type,
+    language: item.language,
+    fromFile: item.fromFile,
+    callerName: item.callerName,
+    calleeName: item.calleeName,
+  }));
   graph.edges.ui = (traceResult.uiEdges || []).map((item) => ({
     type: item.type,
     from: item.from,
@@ -121,6 +128,7 @@ export function updateTermSnapshot(graph, traceResult) {
       catalogFiles: (traceResult.fileCatalog || []).length,
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
+      calls: (traceResult.calls || []).length,
       frameworks: (traceResult.frameworks || []).length,
       uiSurfaces: (traceResult.uiSurfaces || []).length,
       uiEdges: (traceResult.uiEdges || []).length,
@@ -143,6 +151,7 @@ export function updateTermSnapshot(graph, traceResult) {
       catalogFiles: (traceResult.fileCatalog || []).length,
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
+      calls: (traceResult.calls || []).length,
       frameworks: (traceResult.frameworks || []).map((item) => item.id),
       uiSurfaces: (traceResult.uiSurfaces || []).map((item) => item.type),
       uiEdges: (traceResult.uiEdges || []).map((item) => item.type),

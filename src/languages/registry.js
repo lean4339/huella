@@ -70,3 +70,25 @@ export function extractImportsFromCatalog(fileCatalog) {
   }
   return imports;
 }
+
+export function extractFileCalls(filePath) {
+  const adapter = getLanguageAdapter(filePath);
+  if (!adapter?.extractCalls) return [];
+
+  const content = readFile(filePath);
+  if (!content) return [];
+
+  const symbols = adapter.extractSymbols(content, filePath);
+  return adapter.extractCalls(content, filePath, symbols).map((item) => ({
+    ...item,
+    language: adapter.id,
+  }));
+}
+
+export function extractCallsFromCatalog(fileCatalog) {
+  const calls = [];
+  for (const file of fileCatalog) {
+    calls.push(...extractFileCalls(file.path));
+  }
+  return calls;
+}

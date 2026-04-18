@@ -44,4 +44,26 @@ export const csharpLanguage = {
 
     return imports;
   },
+  extractCalls(content, filePath, symbols) {
+    const calls = [];
+    const ignored = new Set(["if", "for", "foreach", "while", "switch", "catch", "using", "lock", "nameof", "typeof", "new", "base", "this"]);
+
+    for (const symbol of symbols) {
+      const snippet = symbol.snippet || "";
+      const re = /\b(?:await\s+)?(?:[A-Za-z_][\w]*\.)?([A-Za-z_][\w]*)\s*\(/g;
+      let match;
+      while ((match = re.exec(snippet)) !== null) {
+        const callee = match[1];
+        if (!callee || callee === symbol.name || ignored.has(callee)) continue;
+        calls.push({
+          type: "call",
+          fromFile: filePath,
+          callerName: symbol.name,
+          calleeName: callee,
+        });
+      }
+    }
+
+    return uniqueBy(calls, (item) => `${item.fromFile}:${item.callerName}:${item.calleeName}`);
+  },
 };

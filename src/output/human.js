@@ -24,6 +24,7 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`catalog: ${result.fileCatalog.length}`);
   lines.push(`symbols: ${result.symbols.length}`);
   lines.push(`imports: ${result.imports.length}`);
+  lines.push(`calls: ${result.calls.length}`);
   lines.push(`frameworks: ${result.frameworks.length}`);
   lines.push(`ui surfaces: ${result.uiSurfaces.length}`);
   lines.push(`ui edges: ${result.uiEdges.length}`);
@@ -35,7 +36,7 @@ export function formatTraceHuman(result, graphMeta) {
 
   if (graphMeta) {
     lines.push(`graph: ${graphMeta.graphPath}`);
-    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}, endpoints ${graphMeta.delta.scan.endpoints}, uiToEndpoint ${graphMeta.delta.scan.uiEndpointEdges}`);
+    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, calls ${graphMeta.delta.scan.calls}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}, endpoints ${graphMeta.delta.scan.endpoints}, uiToEndpoint ${graphMeta.delta.scan.uiEndpointEdges}`);
   }
 
   if (result.frameworks.length > 0) {
@@ -63,11 +64,14 @@ export function formatTraceHuman(result, graphMeta) {
     lines.push("Chains");
     for (const chain of result.chains) {
       lines.push("");
-      for (const hit of chain) {
-        lines.push(`  ${hit.label}  ${formatPath(hit.filePath, result.projectDir)}`);
-        pushBlock(lines, hit.block);
-        pushHits(lines, hit.lines, 3);
+    for (const hit of chain) {
+      lines.push(`  ${hit.label}  ${formatPath(hit.filePath, result.projectDir)}`);
+      if (hit.viaCall) {
+        lines.push(`    via call: ${hit.viaCall}`);
       }
+      pushBlock(lines, hit.block);
+      pushHits(lines, hit.lines, 3);
+    }
     }
   }
 
@@ -76,6 +80,9 @@ export function formatTraceHuman(result, graphMeta) {
     lines.push("Solo Hits");
     for (const hit of result.solo.slice(0, 12)) {
       lines.push(`  ${hit.label}  ${formatPath(hit.filePath, result.projectDir)}`);
+      if (hit.viaCall) {
+        lines.push(`    via call: ${hit.viaCall}`);
+      }
       pushBlock(lines, hit.block);
       pushHits(lines, hit.lines, 2);
     }

@@ -3,5 +3,7 @@ export {
   isSourceFile,
   extractFileSymbols,
   extractSymbolsFromCatalog,
+  extractFileCalls,
+  extractCallsFromCatalog,
   getLanguageAdapter,
 } from "../languages/registry.js";

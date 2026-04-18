@@ -70,6 +70,7 @@ const FRAMEWORK_RULES = [
     language: "python",
     signals: [
       { type: "content", test: /\bFastAPI\s*\(/, weight: 4 },
+      { type: "content", test: /from\s+fastapi\s+import\s+APIRouter|\bAPIRouter\s*\(/, weight: 3 },
       { type: "content", test: /@(app|router)\.(get|post|put|patch|delete)\s*\(/, weight: 2 },
     ],
   },
@@ -77,8 +78,8 @@ const FRAMEWORK_RULES = [
     id: "django",
     language: "python",
     signals: [
-      { type: "path", test: /manage\.py$|settings\.py$|urls\.py$/i, weight: 2 },
-      { type: "content", test: /django\.urls|urlpatterns\s*=|from django\./, weight: 2 },
+      { type: "path", test: /manage\.py$|settings\.py$/i, weight: 3 },
+      { type: "content", test: /django\.urls|from django\./, weight: 2 },
       { type: "content", test: /INSTALLED_APPS\s*=|WSGI_APPLICATION|ASGI_APPLICATION/, weight: 2 },
     ],
   },
@@ -86,8 +87,9 @@ const FRAMEWORK_RULES = [
     id: "flask",
     language: "python",
     signals: [
-      { type: "content", test: /\bFlask\s*\(__name__|\bBlueprint\s*\(/, weight: 3 },
-      { type: "content", test: /@app\.(route|get|post|put|patch|delete)\s*\(|@[\w]+\.(route|get|post|put|patch|delete)\s*\(/, weight: 2 },
+      { type: "content", test: /from\s+flask\s+import\b|\bFlask\s*\(__name__/, weight: 4 },
+      { type: "content", test: /\bBlueprint\s*\(/, weight: 2 },
+      { type: "content", test: /@app\.route\s*\(|@[\w]+\.route\s*\(/, weight: 2 },
     ],
   },
   {

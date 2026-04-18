@@ -51,7 +51,8 @@ export function formatTraceHuman(result, graphMeta) {
 
   if (result.uiEdges.length > 0) {
     lines.push("");
-    lines.push(`UI Edges: ${result.uiEdges.slice(0, 12).map((item) => `${item.type}:${item.from}${item.to ? `->${item.to}` : ""}`).join(", ")}`);
+    const prioritizedUiEdges = [...result.uiEdges].sort(compareUiEdges);
+    lines.push(`UI Edges: ${prioritizedUiEdges.slice(0, 12).map((item) => `${item.type}:${item.from}${item.to ? `->${item.to}` : ""}`).join(", ")}`);
   }
 
   if (result.uiEndpointEdges.length > 0) {
@@ -89,6 +90,36 @@ export function formatTraceHuman(result, graphMeta) {
   }
 
   return lines.join("\n");
+}
+
+function compareUiEdges(a, b) {
+  const scoreA = scoreUiEdge(a.type);
+  const scoreB = scoreUiEdge(b.type);
+  if (scoreA !== scoreB) return scoreB - scoreA;
+  return `${a.from}->${a.to ?? ""}`.localeCompare(`${b.from}->${b.to ?? ""}`);
+}
+
+function scoreUiEdge(type) {
+  switch (type) {
+    case "ui_view_loads_script":
+      return 100;
+    case "controller_action_renders_view":
+      return 95;
+    case "controller_action_calls":
+      return 90;
+    case "ui_entry_uses_app_shell":
+      return 85;
+    case "ui_loads_remote_mfe":
+      return 80;
+    case "ui_view_has_inline_script":
+      return 75;
+    case "ui_uses_http_client":
+      return 70;
+    case "controller_renders_view":
+      return 65;
+    default:
+      return 0;
+  }
 }
 
 export function formatDefinitionsHuman(result, projectDir) {

@@ -381,6 +381,17 @@ function extractTargetsFromContent(relPath, content) {
     });
   }
 
+  const genericJsonRe = /"([A-Za-z][A-Za-z0-9_:-]*(?:URL|Url|BaseAddress|BaseUrl|Address|Endpoint|Uri|URI|Host|Origin))"\s*:\s*"([^"]+)"/g;
+  while ((match = genericJsonRe.exec(content)) !== null) {
+    const value = match[2].trim();
+    if (!looksLikeTarget(value)) continue;
+    targets.push({
+      file: relPath,
+      variable: match[1],
+      value: normalizeTargetValue(value),
+    });
+  }
+
   return targets;
 }
 

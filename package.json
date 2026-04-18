@@ -1,0 +1,15 @@
+{
+  "name": "huella",
+  "version": "0.1.0",
+  "description": "Generic code tracing CLI for agent workflows",
+  "type": "module",
+  "bin": {
+    "huella": "./src/cli/index.js"
+  },
+  "scripts": {
+    "trace": "node ./src/cli/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

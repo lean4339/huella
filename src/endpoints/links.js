@@ -44,15 +44,53 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
       });
     }
 
+    const reqRe = /\breq\s*\(\s*['"`](GET|POST|PUT|PATCH|DELETE)['"`]\s*,\s*(`([^`]+)`|['"`]([^'"`]+)['"`])/g;
+    while ((match = reqRe.exec(content)) !== null) {
+      const rawPath = match[3] ?? match[4] ?? "";
+      const target = findEndpointByRoute(endpoints, `/api${rawPath}`, match[1].toUpperCase());
+      if (!target) continue;
+      edges.push({
+        type: "ui_calls_http_endpoint",
+        from: file.relPath,
+        to: target.key,
+        evidence: ["req_wrapper"],
+      });
+    }
+
   }
 
   return dedupeEdges(edges);
 }
 
 function findEndpointByRoute(endpoints, route, method = null) {
+  const normalizedRoute = normalizeRoute(route);
   return endpoints.find((endpoint) =>
-    endpoint.route === route && (!method || endpoint.method === method)
+    routesMatch(endpoint.route, normalizedRoute) && (!method || endpoint.method === method)
   ) || null;
+}
+
+function normalizeRoute(route) {
+  if (!route) return route;
+
+  let normalized = route
+    .replace(/^https?:\/\/[^/]+/i, "")
+    .replace(/\$\{[^}]+\}/g, ":param")
+    .replace(/\?.*$/, "");
+
+  if (!normalized.startsWith("/")) {
+    normalized = `/${normalized}`;
+  }
+
+  return normalized.replace(/\/+/g, "/");
+}
+
+function routesMatch(endpointRoute, candidateRoute) {
+  const normalizedEndpoint = normalizeRoute(endpointRoute);
+  const normalizedCandidate = normalizeRoute(candidateRoute);
+  if (normalizedEndpoint === normalizedCandidate) return true;
+
+  const endpointPattern = normalizedEndpoint.replace(/:param/g, "[^/]+");
+  return new RegExp(`^${endpointPattern}$`).test(normalizedCandidate);
 }
 
 function readFile(filePath) {
@@ -65,6 +103,7 @@ function readFile(filePath) {
 
 function isUiRelevantFile(relPath) {
   return /(^|\/)(Views|views|templates|pages|app|components|frontend\/src|public)\//i.test(relPath) ||
+    /^src\/.+\.(ts|tsx|js|jsx|html)$/i.test(relPath) ||
     /\.(cshtml|ejs|pug|hbs|mustache|twig|jsp|jspx|ftl|vm|tsx|jsx|html)$/i.test(relPath);
 }
 

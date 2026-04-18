@@ -18,6 +18,10 @@ export function detectEndpoints(fileCatalog) {
     if (/api\/routers\/.+\.py$/i.test(file.relPath) || /api\/app\.py$/i.test(file.relPath)) {
       endpoints.push(...extractFastApiEndpoints(file.relPath, content));
     }
+
+    if (/api\/index\.php$/i.test(file.relPath)) {
+      endpoints.push(...extractPhpDocumentedEndpoints(file.relPath, content));
+    }
   }
 
   return dedupeEndpoints(endpoints);
@@ -90,6 +94,40 @@ function extractFastApiEndpoints(relPath, content) {
     });
   }
   return endpoints;
+}
+
+function extractPhpDocumentedEndpoints(relPath, content) {
+  const endpoints = [];
+  const lines = content.split("\n");
+  const routeRe = /^\s*\*\s+([A-Z\/]+)\s+((?:\/api\/)[^\s←]+)(?:\s|$)/;
+
+  for (const line of lines) {
+    const match = line.match(routeRe);
+    if (!match) continue;
+
+    const methods = match[1].split("/").map((item) => item.trim()).filter(Boolean);
+    const normalizedRoute = normalizeDocumentedPhpRoute(match[2]);
+
+    for (const method of methods) {
+      endpoints.push({
+        type: "php-route",
+        file: relPath,
+        method,
+        route: normalizedRoute,
+        action: null,
+        key: `${method} ${normalizedRoute}`,
+      });
+    }
+  }
+
+  return endpoints;
+}
+
+function normalizeDocumentedPhpRoute(route) {
+  return route
+    .replace(/\[\/\{[^}]+\}\]/g, "/:param")
+    .replace(/\{[^}]+\}/g, ":param")
+    .replace(/\/+/g, "/");
 }
 
 function readFile(filePath) {

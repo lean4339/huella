@@ -19,6 +19,7 @@ export function createEmptyGraph(root = "") {
     lastDelta: null,
     profiles: {
       frameworks: [],
+      uiSurfaces: [],
       detected: [],
       applied: [],
     },

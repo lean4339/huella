@@ -110,11 +110,13 @@ export function updateTermSnapshot(graph, traceResult) {
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
       frameworks: (traceResult.frameworks || []).length,
+      uiSurfaces: (traceResult.uiSurfaces || []).length,
     },
     at: graph.builtAt,
   };
 
   graph.profiles.frameworks = traceResult.frameworks || [];
+  graph.profiles.uiSurfaces = traceResult.uiSurfaces || [];
 
   graph.termCache[traceResult.term] = {
     timestamp: graph.builtAt,
@@ -127,6 +129,7 @@ export function updateTermSnapshot(graph, traceResult) {
       symbols: (traceResult.symbols || []).length,
       imports: (traceResult.imports || []).length,
       frameworks: (traceResult.frameworks || []).map((item) => item.id),
+      uiSurfaces: (traceResult.uiSurfaces || []).map((item) => item.type),
     },
   };
 

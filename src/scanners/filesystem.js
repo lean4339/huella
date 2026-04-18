@@ -5,6 +5,7 @@ import { SOURCE_EXTENSIONS } from "../extractors/symbols.js";
 export const TEXT_EXTENSIONS = new Set([
   ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
   ".xml", ".html", ".htm", ".css", ".scss", ".sass", ".less", ".sql",
+  ".cshtml", ".ejs", ".pug", ".hbs", ".mustache", ".twig", ".jsp", ".jspx", ".ftl", ".vm",
 ]);
 
 export const CONFIG_FILENAMES = new Set([

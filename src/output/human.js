@@ -25,18 +25,24 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`symbols: ${result.symbols.length}`);
   lines.push(`imports: ${result.imports.length}`);
   lines.push(`frameworks: ${result.frameworks.length}`);
+  lines.push(`ui surfaces: ${result.uiSurfaces.length}`);
   lines.push(`files: ${result.hits.length}`);
   lines.push(`chains: ${result.chains.length}`);
   lines.push(`solo: ${result.solo.length}`);
 
   if (graphMeta) {
     lines.push(`graph: ${graphMeta.graphPath}`);
-    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, frameworks ${graphMeta.delta.scan.frameworks}`);
+    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}`);
   }
 
   if (result.frameworks.length > 0) {
     lines.push("");
     lines.push(`Frameworks: ${result.frameworks.map((item) => `${item.id}(${item.score})`).join(", ")}`);
+  }
+
+  if (result.uiSurfaces.length > 0) {
+    lines.push("");
+    lines.push(`UI Surfaces: ${result.uiSurfaces.slice(0, 12).map((item) => `${item.type}:${formatPath(item.path, result.projectDir)}`).join(", ")}`);
   }
 
   if (result.chains.length > 0) {

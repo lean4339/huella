@@ -61,7 +61,7 @@ export function detectUiSurfaces(fileCatalog) {
       surfaces.push(makeSurface("page-script", file, 3));
     }
 
-    if (/(^|\/)wwwroot\/js\/.+\.(js|ts)$/i.test(relPath) || /(^|\/)wwwroot\/.+\/.+\.(js|ts)$/i.test(relPath)) {
+    if (/(^|\/)(wwwroot|static|assets|Scripts|scripts)\/.+\.(js|ts)$/i.test(relPath)) {
       surfaces.push(makeSurface("page-script", file, 3));
     }
   }

@@ -215,8 +215,9 @@ function normalizeViewScriptPath(src, scriptPaths) {
   const direct = [...scriptPaths].find((item) => item.endsWith(cleaned));
   if (direct) return direct;
 
-  if (!cleaned.startsWith("wwwroot/")) {
-    const prefixed = [...scriptPaths].find((item) => item.endsWith(`wwwroot/${cleaned}`));
+  for (const root of ["wwwroot", "public", "static", "assets", "Scripts", "scripts"]) {
+    if (cleaned.startsWith(`${root}/`)) continue;
+    const prefixed = [...scriptPaths].find((item) => item.endsWith(`${root}/${cleaned}`));
     if (prefixed) return prefixed;
   }
 

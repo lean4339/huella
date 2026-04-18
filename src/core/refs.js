@@ -1,28 +1,65 @@
 export function findReferences(graph, term) {
-  const variants = generateTermVariants(term).map((item) => item.toLowerCase());
+  const variants = [...new Set(generateTermVariants(term))];
+  const exactVariantKeys = new Set(variants.map(normalizeName));
 
-  const matchingSymbols = Object.values(graph.symbols || {}).filter((symbol) =>
-    variants.some((variant) => symbol.name.toLowerCase().includes(variant))
-  );
+  const exactSymbols = [];
+  const fuzzySymbols = [];
+
+  for (const symbol of Object.values(graph.symbols || {})) {
+    const exact = exactVariantKeys.has(normalizeName(symbol.name));
+    const fuzzy = variants.some((variant) => symbol.name.toLowerCase().includes(variant.toLowerCase()));
+    if (!exact && !fuzzy) continue;
+    const match = {
+      ...symbol,
+      evidence: exact ? "exact_symbol" : "fuzzy_symbol",
+    };
+    if (exact) {
+      exactSymbols.push(match);
+    } else {
+      fuzzySymbols.push(match);
+    }
+  }
+
+  const matchMode = exactSymbols.length > 0 ? "exact" : "fuzzy";
+  const matchingSymbols = matchMode === "exact" ? exactSymbols : fuzzySymbols;
 
   const symbolFiles = new Set(matchingSymbols.map((symbol) => symbol.filePath));
+  const loweredVariants = variants.map((item) => item.toLowerCase());
 
   const importRefs = (graph.edges?.imports || [])
-    .filter((edge) => {
+    .map((edge) => {
       const specifier = (edge.specifier || "").toLowerCase();
       const resolved = (edge.resolvedPath || "").toLowerCase();
-      return variants.some((variant) =>
-        specifier.includes(variant) ||
-        resolved.includes(variant) ||
-        [...symbolFiles].some((filePath) => filePath === edge.resolvedPath)
-      );
+      const evidence = [];
+
+      if ([...symbolFiles].some((filePath) => filePath === edge.resolvedPath)) {
+        evidence.push(matchMode === "exact" ? "exact_symbol_file" : "fuzzy_symbol_file");
+      }
+
+      const specifierExact = loweredVariants.some((variant) => normalizeName(specifier) === normalizeName(variant));
+      const resolvedExact = loweredVariants.some((variant) => normalizeName(resolved) === normalizeName(variant));
+      const specifierFuzzy = loweredVariants.some((variant) => specifier.includes(variant));
+      const resolvedFuzzy = loweredVariants.some((variant) => resolved.includes(variant));
+
+      if (specifierExact) evidence.push("exact_specifier");
+      if (resolvedExact) evidence.push("exact_resolved_path");
+
+      if (matchMode === "fuzzy") {
+        if (specifierFuzzy) evidence.push("fuzzy_specifier");
+        if (resolvedFuzzy) evidence.push("fuzzy_resolved_path");
+      }
+
+      if (evidence.length === 0) return null;
+
+      return {
+        type: edge.type,
+        fromFile: edge.fromFile,
+        specifier: edge.specifier,
+        resolvedPath: edge.resolvedPath,
+        evidence: [...new Set(evidence)],
+      };
     })
-    .map((edge) => ({
-      type: edge.type,
-      fromFile: edge.fromFile,
-      specifier: edge.specifier,
-      resolvedPath: edge.resolvedPath,
-    }));
+    .filter(Boolean);
 
   const callersByFile = new Map();
   for (const ref of importRefs) {
@@ -36,10 +73,19 @@ export function findReferences(graph, term) {
 
   return {
     term,
-    variants: [...new Set(variants)],
+    variants,
+    matchMode,
+    counts: {
+      exact: exactSymbols.length,
+      fuzzy: fuzzySymbols.length,
+    },
     matchedSymbols: matchingSymbols,
     references: uniqueRefs,
   };
+}
+
+function normalizeName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function generateTermVariants(term) {

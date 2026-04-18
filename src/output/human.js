@@ -63,6 +63,9 @@ export function formatDefinitionsHuman(result, projectDir) {
   const lines = [];
   lines.push(`term: ${result.term}`);
   lines.push(`variants: ${result.variants.join(", ")}`);
+  lines.push(`match mode: ${result.matchMode}`);
+  lines.push(`exact matches: ${result.counts.exact}`);
+  lines.push(`fuzzy matches: ${result.counts.fuzzy}`);
   lines.push(`definitions: ${result.matches.length}`);
 
   if (result.matches.length === 0) {
@@ -77,6 +80,7 @@ export function formatDefinitionsHuman(result, projectDir) {
     lines.push(`  ${formatPath(match.filePath, projectDir)}`);
     lines.push(`    symbol: ${match.name}`);
     lines.push(`    kind: ${match.kind}${match.exported ? "  exported" : ""}`);
+    lines.push(`    evidence: ${match.evidence}`);
     lines.push(`    lines: ${match.startLine}-${match.endLine}`);
     if (match.snippet) {
       const firstLine = match.snippet.split("\n")[0];
@@ -91,6 +95,9 @@ export function formatReferencesHuman(result, projectDir) {
   const lines = [];
   lines.push(`term: ${result.term}`);
   lines.push(`variants: ${result.variants.join(", ")}`);
+  lines.push(`match mode: ${result.matchMode}`);
+  lines.push(`exact matches: ${result.counts.exact}`);
+  lines.push(`fuzzy matches: ${result.counts.fuzzy}`);
   lines.push(`matched symbols: ${result.matchedSymbols.length}`);
   lines.push(`references: ${result.references.length}`);
 
@@ -106,6 +113,7 @@ export function formatReferencesHuman(result, projectDir) {
     lines.push(`  ${formatPath(ref.fromFile, projectDir)}`);
     lines.push(`    type: ${ref.type}`);
     lines.push(`    import: ${ref.specifier}`);
+    lines.push(`    evidence: ${ref.evidence.join(", ")}`);
     if (ref.resolvedPath) {
       lines.push(`    resolved: ${formatPath(ref.resolvedPath, projectDir)}`);
     }

@@ -15,7 +15,6 @@ function resolveImportPath(specifier, fromFile) {
 
   const base = path.resolve(path.dirname(fromFile), specifier);
   const candidates = [
-    base,
     `${base}.ts`,
     `${base}.tsx`,
     `${base}.js`,
@@ -28,10 +27,16 @@ function resolveImportPath(specifier, fromFile) {
     path.join(base, "index.jsx"),
     path.join(base, "index.mjs"),
     path.join(base, "index.cjs"),
+    base,
   ];
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+    try {
+      const stat = fs.statSync(candidate);
+      if (stat.isFile()) return candidate;
+    } catch {
+      continue;
+    }
   }
 
   return null;

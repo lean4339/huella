@@ -1,9 +1,33 @@
 export function findDefinitions(graph, term) {
-  const variants = generateTermVariants(term).map((item) => item.toLowerCase());
+  const variants = [...new Set(generateTermVariants(term))];
+  const exactVariantKeys = new Set(variants.map(normalizeName));
 
-  const matches = Object.entries(graph.symbols || {})
-    .filter(([, symbol]) => variants.some((variant) => symbol.name.toLowerCase().includes(variant)))
-    .map(([id, symbol]) => ({ id, ...symbol }));
+  const exactMatches = [];
+  const fuzzyMatches = [];
+
+  for (const [id, symbol] of Object.entries(graph.symbols || {})) {
+    const exact = exactVariantKeys.has(normalizeName(symbol.name));
+    const fuzzy = variants.some((variant) =>
+      symbol.name.toLowerCase().includes(variant.toLowerCase())
+    );
+
+    if (!exact && !fuzzy) continue;
+
+    const match = {
+      id,
+      ...symbol,
+      evidence: exact ? "exact_symbol" : "fuzzy_symbol",
+    };
+
+    if (exact) {
+      exactMatches.push(match);
+    } else {
+      fuzzyMatches.push(match);
+    }
+  }
+
+  const matchMode = exactMatches.length > 0 ? "exact" : "fuzzy";
+  const matches = matchMode === "exact" ? exactMatches : fuzzyMatches;
 
   matches.sort((a, b) =>
     Number(b.exported) - Number(a.exported) ||
@@ -13,9 +37,18 @@ export function findDefinitions(graph, term) {
 
   return {
     term,
-    variants: [...new Set(variants)],
+    variants,
+    matchMode,
+    counts: {
+      exact: exactMatches.length,
+      fuzzy: fuzzyMatches.length,
+    },
     matches,
   };
+}
+
+function normalizeName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
 function generateTermVariants(term) {

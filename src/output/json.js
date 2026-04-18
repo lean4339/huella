@@ -28,6 +28,8 @@ export function formatDefinitionsJson(result) {
   return {
     term: result.term,
     variants: result.variants,
+    matchMode: result.matchMode,
+    counts: result.counts,
     count: result.matches.length,
     matches: result.matches,
   };
@@ -37,6 +39,8 @@ export function formatReferencesJson(result) {
   return {
     term: result.term,
     variants: result.variants,
+    matchMode: result.matchMode,
+    counts: result.counts,
     matchedSymbols: result.matchedSymbols,
     count: result.references.length,
     references: result.references,

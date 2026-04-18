@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { scanFilesystem } from "../scanners/filesystem.js";
 import { detectFrameworks } from "../frameworks/detector.js";
+import { detectEndpoints } from "../endpoints/detector.js";
 
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -41,6 +42,7 @@ export function discoverWorkspace(rootDir, options = {}) {
   const connections = [
     ...findSharedFrameworkConnections(repos),
     ...findConfigConnections(repos),
+    ...findSharedEndpointTargets(repos),
   ];
 
   return {
@@ -111,6 +113,7 @@ function analyzeRepo(repoDir) {
     frameworks,
     apps,
     ports: dedupeNumbers(apps.flatMap((app) => app.ports || [])),
+    endpoints: detectEndpoints(fileCatalog),
     configTargets: detectConfigTargets(fileCatalog),
   };
 }
@@ -270,6 +273,36 @@ function findConfigConnections(repos) {
   }
 
   return dedupeConnections(connections);
+}
+
+function findSharedEndpointTargets(repos) {
+  const serviceConnections = findConfigConnections(repos).filter((item) => item.kind === "service_target");
+  const byTarget = new Map();
+
+  for (const connection of serviceConnections) {
+    const bucket = byTarget.get(connection.to.root) || [];
+    bucket.push(connection);
+    byTarget.set(connection.to.root, bucket);
+  }
+
+  const shared = [];
+  for (const [targetRoot, connections] of byTarget.entries()) {
+    const sourceRoots = [...new Set(connections.map((item) => item.from.root))];
+    if (sourceRoots.length < 2) continue;
+
+    const targetRepo = repos.find((repo) => repo.root === targetRoot);
+    if (!targetRepo) continue;
+
+    shared.push({
+      type: "shared_endpoint_target",
+      target: { name: targetRepo.name, root: targetRepo.root },
+      consumers: dedupeRepoItems(connections.map((item) => item.from)),
+      endpointCount: targetRepo.endpoints.length,
+      endpointSample: targetRepo.endpoints.slice(0, 10).map((item) => item.key),
+    });
+  }
+
+  return shared.sort((a, b) => a.target.name.localeCompare(b.target.name));
 }
 
 function dedupeApps(apps) {

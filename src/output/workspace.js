@@ -27,6 +27,7 @@ export function formatWorkspaceHuman(result, graphMeta) {
     lines.push(`    files: ${repo.files}`);
     lines.push(`    frameworks: ${repo.frameworks.length > 0 ? repo.frameworks.map((item) => `${item.id}(${item.score})`).join(", ") : "none"}`);
     lines.push(`    apps: ${repo.apps.length}`);
+    lines.push(`    endpoints: ${repo.endpoints?.length ?? 0}`);
     lines.push(`    config targets: ${repo.configTargets?.length ?? 0}`);
   }
 
@@ -44,6 +45,16 @@ export function formatWorkspaceHuman(result, graphMeta) {
         lines.push(`  ${connection.kind ?? connection.type}: ${connection.from.name} -> ${connection.to.name}`);
         lines.push(`    via: ${connection.variable}=${connection.value}`);
         lines.push(`    source: ${connection.source}`);
+        continue;
+      }
+
+      if (connection.type === "shared_endpoint_target") {
+        lines.push(`  ${connection.type}: ${connection.target.name}`);
+        lines.push(`    consumers: ${connection.consumers.map((repo) => `${repo.name} [${formatPath(repo.root, result.rootDir)}]`).join(", ")}`);
+        lines.push(`    endpoints: ${connection.endpointCount}`);
+        if (connection.endpointSample?.length) {
+          lines.push(`    sample: ${connection.endpointSample.slice(0, 5).join(", ")}`);
+        }
       }
     }
   }

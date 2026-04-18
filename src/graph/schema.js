@@ -15,6 +15,7 @@ export function createEmptyGraph(root = "") {
       connectsTo: [],
       belongsToFlow: [],
       ui: [],
+      uiToEndpoint: [],
     },
     termCache: {},
     lastDelta: null,

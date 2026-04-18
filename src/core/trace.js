@@ -6,6 +6,8 @@ import { extractSymbolsFromCatalog, isSourceFile } from "../extractors/symbols.j
 import { detectFrameworks } from "../frameworks/detector.js";
 import { detectUiSurfaces } from "../ui/detector.js";
 import { detectUiEdges } from "../ui/edges.js";
+import { detectEndpoints } from "../endpoints/detector.js";
+import { detectUiEndpointEdges } from "../endpoints/links.js";
 
 function generateTermVariants(term) {
   const variants = new Set();
@@ -178,6 +180,8 @@ export function traceTerm(term, projectDir) {
   const frameworks = detectFrameworks(fileCatalog);
   const uiSurfaces = detectUiSurfaces(fileCatalog);
   const uiEdges = detectUiEdges(fileCatalog, uiSurfaces);
+  const endpoints = detectEndpoints(fileCatalog);
+  const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints);
   const variants = generateTermVariants(term);
   const files = findFilesWithTerm(fileCatalog, variants);
 
@@ -239,6 +243,8 @@ export function traceTerm(term, projectDir) {
     frameworks,
     uiSurfaces,
     uiEdges,
+    endpoints,
+    uiEndpointEdges,
     hits,
     chains,
     solo,

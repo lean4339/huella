@@ -10,6 +10,8 @@ export function formatTraceJson(result, graphMeta) {
       frameworks: result.frameworks.length,
       uiSurfaces: result.uiSurfaces.length,
       uiEdges: result.uiEdges.length,
+      endpoints: result.endpoints.length,
+      uiEndpointEdges: result.uiEndpointEdges.length,
       files: result.hits.length,
       chains: result.chains.length,
       solo: result.solo.length,
@@ -25,6 +27,8 @@ export function formatTraceJson(result, graphMeta) {
     frameworks: result.frameworks,
     uiSurfaces: result.uiSurfaces,
     uiEdges: result.uiEdges,
+    endpoints: result.endpoints,
+    uiEndpointEdges: result.uiEndpointEdges,
     chains: result.chains,
     solo: result.solo,
   };

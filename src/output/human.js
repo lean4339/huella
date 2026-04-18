@@ -27,13 +27,15 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`frameworks: ${result.frameworks.length}`);
   lines.push(`ui surfaces: ${result.uiSurfaces.length}`);
   lines.push(`ui edges: ${result.uiEdges.length}`);
+  lines.push(`endpoints: ${result.endpoints.length}`);
+  lines.push(`ui->endpoint: ${result.uiEndpointEdges.length}`);
   lines.push(`files: ${result.hits.length}`);
   lines.push(`chains: ${result.chains.length}`);
   lines.push(`solo: ${result.solo.length}`);
 
   if (graphMeta) {
     lines.push(`graph: ${graphMeta.graphPath}`);
-    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}`);
+    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}, endpoints ${graphMeta.delta.scan.endpoints}, uiToEndpoint ${graphMeta.delta.scan.uiEndpointEdges}`);
   }
 
   if (result.frameworks.length > 0) {
@@ -49,6 +51,11 @@ export function formatTraceHuman(result, graphMeta) {
   if (result.uiEdges.length > 0) {
     lines.push("");
     lines.push(`UI Edges: ${result.uiEdges.slice(0, 12).map((item) => `${item.type}:${item.from}${item.to ? `->${item.to}` : ""}`).join(", ")}`);
+  }
+
+  if (result.uiEndpointEdges.length > 0) {
+    lines.push("");
+    lines.push(`UI->Endpoint: ${result.uiEndpointEdges.slice(0, 12).map((item) => `${item.type}:${item.from}->${item.to}`).join(", ")}`);
   }
 
   if (result.chains.length > 0) {

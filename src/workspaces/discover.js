@@ -255,8 +255,10 @@ function findConfigConnections(repos) {
       );
 
       for (const candidate of candidates) {
+        const kind = classifyConfigConnection(target, candidate);
         connections.push({
           type: "config_target",
+          kind,
           from: { name: sourceRepo.name, root: sourceRepo.root },
           to: { name: candidate.name, root: candidate.root },
           variable: target.variable,
@@ -361,6 +363,38 @@ function normalizeTargetValue(value) {
     return `http://${value}`;
   }
   return value.replace(/\/+$/, "");
+}
+
+function classifyConfigConnection(target, candidate = null) {
+  const value = String(target.value || "");
+  const variable = String(target.variable || "");
+  const targetPort = extractPort(value);
+
+  if (/^\/api(\/|$)/i.test(value)) {
+    return "service_target";
+  }
+
+  if (/\/(login|signin|sign-in|dashboard|admin)(\/|$)/i.test(value)) {
+    return "ui_link";
+  }
+
+  if (/\b(admin|dashboard|portal|backoffice|frontend|front|web|site|auth)\b/i.test(variable)) {
+    return "ui_link";
+  }
+
+  if (/\b(api|backend|service|server|gateway|graphql)\b/i.test(variable)) {
+    return "service_target";
+  }
+
+  if (targetPort && candidate?.ports?.includes(targetPort)) {
+    return "service_target";
+  }
+
+  if (/^https?:\/\//i.test(value) || /^localhost:\d+/i.test(value) || /^127\.0\.0\.1:\d+/i.test(value)) {
+    return "external_link";
+  }
+
+  return "config_target";
 }
 
 function matchesRepoTarget(repo, target, haystack) {

@@ -41,7 +41,7 @@ export function formatWorkspaceHuman(result, graphMeta) {
       }
 
       if (connection.type === "config_target") {
-        lines.push(`  ${connection.type}: ${connection.from.name} -> ${connection.to.name}`);
+        lines.push(`  ${connection.kind ?? connection.type}: ${connection.from.name} -> ${connection.to.name}`);
         lines.push(`    via: ${connection.variable}=${connection.value}`);
         lines.push(`    source: ${connection.source}`);
       }

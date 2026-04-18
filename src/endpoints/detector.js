@@ -37,8 +37,7 @@ function extractAspNetEndpoints(relPath, content) {
   const routePrefix = controllerMatch?.[1] || null;
   const controllerName = controllerMatch?.[2]?.replace(/Controller$/, "") || null;
 
-  const attrRe = /\[(Http(Get|Post|Put|Patch|Delete))\("([^"]*)"\)\][\s\S]{0,120}?public\s+(?:async\s+)?Task<[^>]+>|public\s+(?:async\s+)?ActionResult\s+([A-Za-z_][\w]*)/g;
-  const methodRe = /\[(Http(Get|Post|Put|Patch|Delete))\("([^"]*)"\)\][\s\S]{0,200}?(?:public\s+(?:async\s+)?(?:Task<[^>]+>|ActionResult(?:<[^>]+>)?)\s+([A-Za-z_][\w]*))/g;
+  const methodRe = /\[(Http(Get|Post|Put|Patch|Delete))(?:\("([^"]*)"\))?\][\s\S]{0,240}?public\s+(?:async\s+)?(?:Task(?:<[^>]+>)?|ActionResult(?:<[^>]+>)?|IActionResult|[A-Za-z_][\w<>]*)\s+([A-Za-z_][\w]*)/g;
   let match;
 
   while ((match = methodRe.exec(content)) !== null) {

@@ -8,6 +8,7 @@ export function detectUiEdges(fileCatalog, uiSurfaces) {
   const spaEntries = uiSurfaces.filter((item) => item.type === "spa-entry");
   const spaAppShells = uiSurfaces.filter((item) => item.type === "spa-app-shell");
   const viewInlineScripts = uiSurfaces.filter((item) => item.type === "view-inline-script");
+  const qwikComponents = uiSurfaces.filter((item) => item.type === "qwik-component");
 
   for (const entry of spaEntries) {
     const content = readFile(entry.path);
@@ -60,6 +61,20 @@ export function detectUiEdges(fileCatalog, uiSurfaces) {
       to: null,
       evidence,
     });
+  }
+
+  for (const component of qwikComponents) {
+    const content = readFile(component.path);
+    if (!content) continue;
+
+    if (/\bfetch\s*\(\s*_?remoteUrl\b|\bfetch\s*\(\s*remote\.url\b|\bnew\s+URL\s*\(\s*remoteUrl\b|\bnew\s+URL\s*\(\s*url\b/.test(content)) {
+      edges.push({
+        type: "ui_loads_remote_mfe",
+        from: component.relPath,
+        to: null,
+        evidence: ["remote_fetch"],
+      });
+    }
   }
 
   for (const file of fileCatalog) {

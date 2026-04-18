@@ -18,20 +18,25 @@ export function detectUiSurfaces(fileCatalog) {
       surfaces.push(makeSurface("ui-component", file, 2));
     }
 
-    if (/^frontend\/src\/main\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/main\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+    if (/(^|\/)(frontend\/src|src)\/main\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("spa-entry", file, 5));
     }
 
-    if (/^frontend\/src\/App\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/App\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+    if (/(^|\/)(frontend\/src|src)\/App\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("spa-app-shell", file, 5));
     }
 
-    if (/^frontend\/src\/pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+    if (/(^|\/)(frontend\/src|src)\/pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("spa-page", file, 4));
     }
 
-    if (/^frontend\/src\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+    if (/(^|\/)(frontend\/src|src)\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("spa-route-module", file, 4));
+      surfaces.push(makeSurface("qwik-route", file, 4));
+    }
+
+    if (/(^|\/)src\/components\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+      surfaces.push(makeSurface("qwik-component", file, 3));
     }
 
     if (/^Views\/.+\.cshtml$/i.test(relPath) || /\.cshtml$/i.test(relPath)) {

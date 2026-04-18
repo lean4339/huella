@@ -5,7 +5,6 @@ export function detectUiSurfaces(fileCatalog) {
 
   for (const file of fileCatalog) {
     const relPath = file.relPath;
-    const ext = file.ext.toLowerCase();
 
     if (/^pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("next-page", file, 4));
@@ -17,6 +16,22 @@ export function detectUiSurfaces(fileCatalog) {
 
     if (/^components\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("ui-component", file, 2));
+    }
+
+    if (/^frontend\/src\/main\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/main\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+      surfaces.push(makeSurface("spa-entry", file, 5));
+    }
+
+    if (/^frontend\/src\/App\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/App\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+      surfaces.push(makeSurface("spa-app-shell", file, 5));
+    }
+
+    if (/^frontend\/src\/pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+      surfaces.push(makeSurface("spa-page", file, 4));
+    }
+
+    if (/^frontend\/src\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath) || /^src\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
+      surfaces.push(makeSurface("spa-route-module", file, 4));
     }
 
     if (/^Views\/.+\.cshtml$/i.test(relPath) || /\.cshtml$/i.test(relPath)) {
@@ -37,7 +52,7 @@ export function detectUiSurfaces(fileCatalog) {
       surfaces.push(makeSurface("static-entry", file, 4));
     }
 
-    if (/^public\/.+\.(js|ts)$/i.test(relPath) || /(^|\/)(app|main|index)\.(js|ts)$/i.test(relPath)) {
+    if (/^public\/.+\.(js|ts)$/i.test(relPath) || /(^|\/)(app|main)\.(js|ts)$/i.test(relPath)) {
       surfaces.push(makeSurface("page-script", file, 3));
     }
   }

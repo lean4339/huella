@@ -11,6 +11,10 @@ export function detectEndpoints(fileCatalog) {
       endpoints.push(...extractAspNetEndpoints(file.relPath, content));
     }
 
+    if (/Program\.cs$/i.test(file.relPath) && /\bMapControllers\s*\(|\bWebApplication\.CreateBuilder\b/.test(content)) {
+      endpoints.push(...extractAspNetMinimalEndpoints(file.relPath, content));
+    }
+
     if (/source\/server\/index\.(ts|js)$/i.test(file.relPath) || /server\.(ts|js)$/i.test(file.relPath)) {
       endpoints.push(...extractExpressEndpoints(file.relPath, content));
     }
@@ -51,6 +55,27 @@ function extractAspNetEndpoints(relPath, content) {
       route: buildAspNetRoute(routePrefix, controllerName, route),
       action,
       key: `${controllerName}.${action}`,
+    });
+  }
+
+  return endpoints;
+}
+
+function extractAspNetMinimalEndpoints(relPath, content) {
+  const endpoints = [];
+  const re = /\bapp\.Map(Get|Post|Put|Patch|Delete)\(\s*"([^"]+)"/g;
+  let match;
+
+  while ((match = re.exec(content)) !== null) {
+    const method = match[1].toUpperCase();
+    const route = match[2].startsWith("/") ? match[2] : `/${match[2]}`;
+    endpoints.push({
+      type: "aspnet-minimal",
+      file: relPath,
+      method,
+      route,
+      action: null,
+      key: `${method} ${route}`,
     });
   }
 

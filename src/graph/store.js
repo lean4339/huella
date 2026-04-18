@@ -180,6 +180,102 @@ export function updateTermSnapshot(graph, traceResult) {
   return { graph, previous: prev, delta: graph.lastDelta };
 }
 
+export function updateGraphSnapshot(graph, analysis) {
+  graph.root = analysis.projectDir;
+  graph.builtAt = Date.now();
+  graph.files = Object.fromEntries(
+    (analysis.fileCatalog || []).map((file) => [
+      file.relPath,
+      {
+        path: file.path,
+        ext: file.ext,
+        type: file.type,
+        layer: file.layer,
+        size: file.size,
+      },
+    ])
+  );
+  graph.symbols = Object.fromEntries(
+    (analysis.symbols || []).map((symbol) => [
+      `${path.relative(analysis.projectDir, symbol.filePath)}::${symbol.name}::${symbol.startLine}`,
+      {
+        name: symbol.name,
+        kind: symbol.kind,
+        language: symbol.language,
+        filePath: symbol.filePath,
+        startLine: symbol.startLine,
+        endLine: symbol.endLine,
+        exported: symbol.exported,
+        snippet: symbol.snippet,
+      },
+    ])
+  );
+  graph.edges.imports = (analysis.imports || []).map((item) => ({
+    type: item.type,
+    language: item.language,
+    fromFile: item.fromFile,
+    specifier: item.specifier,
+    resolvedPath: item.resolvedPath,
+  }));
+  graph.edges.calls = (analysis.calls || []).map((item) => ({
+    type: item.type,
+    language: item.language,
+    fromFile: item.fromFile,
+    callerName: item.callerName,
+    calleeName: item.calleeName,
+  }));
+  graph.edges.ui = (analysis.uiEdges || []).map((item) => ({
+    type: item.type,
+    from: item.from,
+    to: item.to,
+    evidence: item.evidence,
+  }));
+  graph.edges.uiToEndpoint = (analysis.uiEndpointEdges || []).map((item) => ({
+    type: item.type,
+    from: item.from,
+    to: item.to,
+    evidence: item.evidence,
+  }));
+  graph.edges.rpc = (analysis.rpcSurfaces || []).map((item) => ({
+    type: item.type,
+    key: item.key,
+    mod: item.mod,
+    fun: item.fun,
+    apiFile: item.apiFile,
+    handlerFile: item.handlerFile,
+    handlerName: item.handlerName,
+  }));
+  graph.profiles.frameworks = analysis.frameworks || [];
+  graph.profiles.uiSurfaces = analysis.uiSurfaces || [];
+  graph.profiles.rpcSurfaces = analysis.rpcSurfaces || [];
+  graph.profiles.entrySurfaces = analysis.entrySurfaces || [];
+  graph.lastDelta = {
+    term: null,
+    counts: {
+      chains: 0,
+      solo: 0,
+      files: 0,
+    },
+    scan: {
+      catalogFiles: (analysis.fileCatalog || []).length,
+      symbols: (analysis.symbols || []).length,
+      imports: (analysis.imports || []).length,
+      calls: (analysis.calls || []).length,
+      frameworks: (analysis.frameworks || []).length,
+      uiSurfaces: (analysis.uiSurfaces || []).length,
+      uiEdges: (analysis.uiEdges || []).length,
+      endpoints: (analysis.endpoints || []).length,
+      uiEndpointEdges: (analysis.uiEndpointEdges || []).length,
+      rpcSurfaces: (analysis.rpcSurfaces || []).length,
+      rpcFlows: (analysis.rpcFlows || []).length,
+      entrySurfaces: (analysis.entrySurfaces || []).length,
+    },
+    at: graph.builtAt,
+  };
+
+  return { graph };
+}
+
 export function updateWorkspaceSnapshot(graph, workspaceResult) {
   graph.root = workspaceResult.rootDir;
   graph.builtAt = Date.now();

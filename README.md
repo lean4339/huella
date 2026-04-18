@@ -32,6 +32,37 @@ node cli.js createUser .
 This is intentionally heuristic.
 It is a base for a future agent-facing skill, not a strict static analyzer.
 
+## Agent tool
+
+`huella` also exposes a thin JSON wrapper for agents:
+
+```bash
+npm run tool -- workspace /path/to/workspace
+npm run tool -- graph /path/to/repo
+npm run tool -- trace create_files /path/to/repo
+npm run tool -- def create_files /path/to/repo
+npm run tool -- refs create_files /path/to/repo
+```
+
+It returns a stable JSON envelope:
+
+```json
+{
+  "ok": true,
+  "operation": "trace",
+  "input": {},
+  "result": {}
+}
+```
+
+Available operations:
+
+- `workspace`: build the multi-repo workspace graph
+- `graph`: build the full graph for one repo on demand
+- `trace`: term trace with graph metadata
+- `def`: definition lookup
+- `refs`: reference lookup
+
 ## Framework ranking
 
 Framework detection is ranked by:

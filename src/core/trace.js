@@ -175,7 +175,7 @@ function getMatchingLines(content, variants) {
   return hits.slice(0, 8);
 }
 
-export function traceTerm(term, projectDir) {
+export function analyzeProject(projectDir) {
   const fileCatalog = scanFilesystem(projectDir);
   const symbols = extractSymbolsFromCatalog(fileCatalog);
   const calls = extractCallsFromCatalog(fileCatalog);
@@ -194,8 +194,27 @@ export function traceTerm(term, projectDir) {
     uiSurfaces,
     eventEdges: [],
   });
+  return {
+    projectDir,
+    fileCatalog,
+    symbols,
+    calls,
+    imports,
+    frameworks,
+    uiSurfaces,
+    uiEdges,
+    endpoints,
+    uiEndpointEdges,
+    rpcSurfaces,
+    rpcFlows,
+    entrySurfaces,
+  };
+}
+
+export function traceTerm(term, projectDir) {
+  const analysis = analyzeProject(projectDir);
   const variants = generateTermVariants(term);
-  const files = findFilesWithTerm(fileCatalog, variants);
+  const files = findFilesWithTerm(analysis.fileCatalog, variants);
 
   const hits = [];
   for (const { filePath, content, pathMatched } of files) {
@@ -210,7 +229,7 @@ export function traceTerm(term, projectDir) {
     hits.push({ filePath, block, lines, pathMatched, ...layerInfo });
   }
 
-  expandHitsByCalls(hits, symbols, calls);
+  expandHitsByCalls(hits, analysis.symbols, analysis.calls);
   hits.sort((a, b) => a.order - b.order || a.filePath.localeCompare(b.filePath));
 
   const inChain = new Set();
@@ -227,7 +246,7 @@ export function traceTerm(term, projectDir) {
       if (callee.order <= caller.order) continue;
       if (!callee.block?.funcName) continue;
       if (
-        hasCallEdge(calls, caller.filePath, caller.block.funcName, callee.block.funcName) ||
+        hasCallEdge(analysis.calls, caller.filePath, caller.block.funcName, callee.block.funcName) ||
         new RegExp(`\\b${callee.block.funcName}\\s*\\(`).test(caller.block.code)
       ) {
         chain.push(callee);
@@ -251,20 +270,20 @@ export function traceTerm(term, projectDir) {
 
   return {
     term,
-    projectDir,
+    projectDir: analysis.projectDir,
     variants,
-    fileCatalog,
-    symbols,
-    calls,
-    imports,
-    frameworks,
-    uiSurfaces,
-    uiEdges,
-    endpoints,
-    uiEndpointEdges,
-    rpcSurfaces,
-    rpcFlows,
-    entrySurfaces,
+    fileCatalog: analysis.fileCatalog,
+    symbols: analysis.symbols,
+    calls: analysis.calls,
+    imports: analysis.imports,
+    frameworks: analysis.frameworks,
+    uiSurfaces: analysis.uiSurfaces,
+    uiEdges: analysis.uiEdges,
+    endpoints: analysis.endpoints,
+    uiEndpointEdges: analysis.uiEndpointEdges,
+    rpcSurfaces: analysis.rpcSurfaces,
+    rpcFlows: analysis.rpcFlows,
+    entrySurfaces: analysis.entrySurfaces,
     hits,
     chains,
     solo,

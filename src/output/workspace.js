@@ -29,6 +29,7 @@ export function formatWorkspaceHuman(result, graphMeta) {
     lines.push(`    apps: ${repo.apps.length}`);
     lines.push(`    endpoints: ${repo.endpoints?.length ?? 0}`);
     lines.push(`    rpc surfaces: ${repo.rpcSurfaces?.length ?? 0}`);
+    lines.push(`    entry surfaces: ${repo.entrySurfaces?.length ?? 0}`);
     lines.push(`    config targets: ${repo.configTargets?.length ?? 0}`);
   }
 

@@ -8,6 +8,7 @@ import { detectUiSurfaces } from "../ui/detector.js";
 import { detectUiEdges } from "../ui/edges.js";
 import { detectUiEndpointEdges } from "../endpoints/links.js";
 import { detectRpcSurfaces, detectRpcFlows } from "../rpc/detector.js";
+import { detectEntrySurfaces } from "../entry/detector.js";
 
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -121,6 +122,14 @@ function analyzeRepo(repoDir) {
   const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
   const rpcSurfaces = detectRpcSurfaces(fileCatalog, symbols);
   const rpcFlows = detectRpcFlows(rpcSurfaces, symbols, calls, fileCatalog);
+  const eventEdges = detectEventEdges(fileCatalog, endpoints);
+  const entrySurfaces = detectEntrySurfaces({
+    apps,
+    endpoints,
+    rpcSurfaces,
+    uiSurfaces,
+    eventEdges,
+  });
 
   return {
     root: repoDir,
@@ -133,7 +142,8 @@ function analyzeRepo(repoDir) {
     uiEndpointEdges,
     rpcSurfaces,
     rpcFlows,
-    eventEdges: detectEventEdges(fileCatalog, endpoints),
+    entrySurfaces,
+    eventEdges,
     entryFlows: detectEntryFlows(fileCatalog, endpoints, symbols, calls),
     configTargets: detectConfigTargets(fileCatalog),
     outboundTargets: detectOutboundTargets(fileCatalog),

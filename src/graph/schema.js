@@ -24,6 +24,7 @@ export function createEmptyGraph(root = "") {
       frameworks: [],
       uiSurfaces: [],
       rpcSurfaces: [],
+      entrySurfaces: [],
       detected: [],
       applied: [],
     },

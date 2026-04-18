@@ -9,6 +9,7 @@ import { detectUiEdges } from "../ui/edges.js";
 import { detectEndpoints } from "../endpoints/detector.js";
 import { detectUiEndpointEdges } from "../endpoints/links.js";
 import { detectRpcSurfaces, detectRpcFlows } from "../rpc/detector.js";
+import { detectEntrySurfaces } from "../entry/detector.js";
 
 function generateTermVariants(term) {
   const variants = new Set();
@@ -186,6 +187,13 @@ export function traceTerm(term, projectDir) {
   const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
   const rpcSurfaces = detectRpcSurfaces(fileCatalog, symbols);
   const rpcFlows = detectRpcFlows(rpcSurfaces, symbols, calls, fileCatalog);
+  const entrySurfaces = detectEntrySurfaces({
+    apps: [],
+    endpoints,
+    rpcSurfaces,
+    uiSurfaces,
+    eventEdges: [],
+  });
   const variants = generateTermVariants(term);
   const files = findFilesWithTerm(fileCatalog, variants);
 
@@ -256,6 +264,7 @@ export function traceTerm(term, projectDir) {
     uiEndpointEdges,
     rpcSurfaces,
     rpcFlows,
+    entrySurfaces,
     hits,
     chains,
     solo,

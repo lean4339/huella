@@ -33,6 +33,7 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`ui->endpoint: ${result.uiEndpointEdges.length}`);
   lines.push(`rpc surfaces: ${result.rpcSurfaces?.length ?? 0}`);
   lines.push(`rpc flows: ${result.rpcFlows?.length ?? 0}`);
+  lines.push(`entry surfaces: ${result.entrySurfaces?.length ?? 0}`);
   lines.push(`files: ${result.hits.length}`);
   lines.push(`chains: ${result.chains.length}`);
   lines.push(`solo: ${result.solo.length}`);
@@ -75,6 +76,11 @@ export function formatTraceHuman(result, graphMeta) {
       lines.push(`  ${flow.key}`);
       lines.push(`    ${flow.steps.map((step) => step.startsWith(result.projectDir) ? formatPath(step, result.projectDir) : step).join(" -> ")}`);
     }
+  }
+
+  if ((result.entrySurfaces?.length ?? 0) > 0) {
+    lines.push("");
+    lines.push(`Entry Surfaces: ${result.entrySurfaces.slice(0, 12).map((item) => `${item.type}:${item.key}`).join(", ")}`);
   }
 
   if (result.chains.length > 0) {

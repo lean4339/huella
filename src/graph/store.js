@@ -145,6 +145,7 @@ export function updateTermSnapshot(graph, traceResult) {
       uiEndpointEdges: (traceResult.uiEndpointEdges || []).length,
       rpcSurfaces: (traceResult.rpcSurfaces || []).length,
       rpcFlows: (traceResult.rpcFlows || []).length,
+      entrySurfaces: (traceResult.entrySurfaces || []).length,
     },
     at: graph.builtAt,
   };
@@ -152,6 +153,7 @@ export function updateTermSnapshot(graph, traceResult) {
   graph.profiles.frameworks = traceResult.frameworks || [];
   graph.profiles.uiSurfaces = traceResult.uiSurfaces || [];
   graph.profiles.rpcSurfaces = traceResult.rpcSurfaces || [];
+  graph.profiles.entrySurfaces = traceResult.entrySurfaces || [];
 
   graph.termCache[traceResult.term] = {
     timestamp: graph.builtAt,
@@ -171,6 +173,7 @@ export function updateTermSnapshot(graph, traceResult) {
       uiEndpointEdges: (traceResult.uiEndpointEdges || []).map((item) => item.type),
       rpcSurfaces: (traceResult.rpcSurfaces || []).map((item) => item.key),
       rpcFlows: (traceResult.rpcFlows || []).map((item) => item.key),
+      entrySurfaces: (traceResult.entrySurfaces || []).map((item) => item.key),
     },
   };
 

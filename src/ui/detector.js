@@ -5,6 +5,7 @@ export function detectUiSurfaces(fileCatalog) {
 
   for (const file of fileCatalog) {
     const relPath = file.relPath;
+    const content = shouldInspectContent(relPath) ? readFile(file.path) : null;
 
     if (/^pages\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("next-page", file, 4));
@@ -32,11 +33,15 @@ export function detectUiSurfaces(fileCatalog) {
 
     if (/(^|\/)(frontend\/src|src)\/routes?\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
       surfaces.push(makeSurface("spa-route-module", file, 4));
-      surfaces.push(makeSurface("qwik-route", file, 4));
+      if (isQwikFile(content)) {
+        surfaces.push(makeSurface("qwik-route", file, 4));
+      }
     }
 
     if (/(^|\/)src\/components\/.+\.(tsx|ts|jsx|js)$/i.test(relPath)) {
-      surfaces.push(makeSurface("qwik-component", file, 3));
+      if (isQwikFile(content)) {
+        surfaces.push(makeSurface("qwik-component", file, 3));
+      }
     }
 
     if (/^Views\/.+\.cshtml$/i.test(relPath) || /\.cshtml$/i.test(relPath)) {
@@ -90,6 +95,22 @@ function hasInlineScript(filePath) {
   } catch {
     return false;
   }
+}
+
+function shouldInspectContent(relPath) {
+  return /\.(tsx|ts|jsx|js)$/i.test(relPath);
+}
+
+function readFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function isQwikFile(content) {
+  return Boolean(content && /@builder\.io\/qwik|@builder\.io\/qwik-city|\bcomponent\$\s*\(|routeLoader\$\s*\(|server\$\s*\(/.test(content));
 }
 
 function dedupeSurfaces(items) {

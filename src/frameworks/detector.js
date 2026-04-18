@@ -63,7 +63,6 @@ const FRAMEWORK_RULES = [
     signals: [
       { type: "content", test: /@builder\.io\/qwik|@builder\.io\/qwik-city/, weight: 4 },
       { type: "content", test: /\bcomponent\$\s*\(|routeLoader\$\s*\(|server\$\s*\(/, weight: 2 },
-      { type: "path", test: /src\/routes\/.+\.(tsx|ts|jsx|js)$/i, weight: 2 },
       { type: "path", test: /vite\.config\.(ts|js|mts|mjs)$/i, weight: 1 },
     ],
   },

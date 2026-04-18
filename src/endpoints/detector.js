@@ -19,6 +19,11 @@ export function detectEndpoints(fileCatalog) {
       endpoints.push(...extractExpressEndpoints(file.relPath, content));
     }
 
+    if (/(^|\/)(src|server)\/routes\/.+\.(ts|js)$/i.test(file.relPath) || /(^|\/)routes\/.+\.(ts|js)$/i.test(file.relPath)) {
+      endpoints.push(...extractExpressRouteModuleEndpoints(file.relPath, content));
+      endpoints.push(...extractSwaggerJsEndpoints(file.relPath, content));
+    }
+
     if (/api\/routers\/.+\.py$/i.test(file.relPath) || /api\/app\.py$/i.test(file.relPath)) {
       endpoints.push(...extractFastApiEndpoints(file.relPath, content));
     }
@@ -106,6 +111,54 @@ function extractExpressEndpoints(relPath, content) {
   return endpoints;
 }
 
+function extractExpressRouteModuleEndpoints(relPath, content) {
+  const endpoints = [];
+  const routeBase = inferExpressRouteBase(relPath);
+  const re = /\brouter\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
+  let match;
+
+  while ((match = re.exec(content)) !== null) {
+    const method = match[1].toUpperCase();
+    const route = normalizeExpressRoute(routeBase, match[2]);
+    endpoints.push({
+      type: "express-route-module",
+      file: relPath,
+      method,
+      route,
+      action: null,
+      key: `${method} ${route}`,
+    });
+  }
+
+  return endpoints;
+}
+
+function extractSwaggerJsEndpoints(relPath, content) {
+  const endpoints = [];
+  const pathRe = /^\s*\*\s+(\/[^\s:]+):\s*$/gm;
+  let pathMatch;
+
+  while ((pathMatch = pathRe.exec(content)) !== null) {
+    const route = pathMatch[1];
+    const rest = content.slice(pathMatch.index, pathMatch.index + 400);
+    const methodMatches = [...rest.matchAll(/^\s*\*\s+(get|post|put|patch|delete):\s*$/gm)];
+
+    for (const methodMatch of methodMatches) {
+      const method = methodMatch[1].toUpperCase();
+      endpoints.push({
+        type: "express-swagger-route",
+        file: relPath,
+        method,
+        route,
+        action: null,
+        key: `${method} ${route}`,
+      });
+    }
+  }
+
+  return endpoints;
+}
+
 function extractFastApiEndpoints(relPath, content) {
   const endpoints = [];
   const prefixMatch = content.match(/APIRouter\(\s*prefix\s*=\s*["'`]([^"'`]+)["'`]/);
@@ -184,6 +237,17 @@ function normalizeDocumentedPhpRoute(route) {
     .replace(/\[\/\{[^}]+\}\]/g, "/:param")
     .replace(/\{[^}]+\}/g, ":param")
     .replace(/\/+/g, "/");
+}
+
+function inferExpressRouteBase(relPath) {
+  const fileName = relPath.split("/").pop()?.replace(/\.(ts|js)$/i, "") || "";
+  if (!fileName || fileName === "index") return "/";
+  return `/${fileName.toLowerCase()}`;
+}
+
+function normalizeExpressRoute(baseRoute, route) {
+  const normalizedChild = route === "/" ? "" : route;
+  return `${baseRoute}${normalizedChild}`.replace(/\/+/g, "/") || "/";
 }
 
 function readFile(filePath) {

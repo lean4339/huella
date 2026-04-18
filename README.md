@@ -31,3 +31,41 @@ node cli.js createUser .
 
 This is intentionally heuristic.
 It is a base for a future agent-facing skill, not a strict static analyzer.
+
+## Framework ranking
+
+Framework detection is ranked by:
+
+- detector evidence score
+- a configurable preference boost
+
+The final order uses:
+
+```text
+rankScore = score + preferenceBoost
+```
+
+Default preference boosts:
+
+- `nextjs: 20`
+- `aspnet-core: 18`
+- `spring-boot: 18`
+- `fastapi: 17`
+- `laravel: 16`
+- `express: 15`
+- `django: 14`
+- `nestjs: 13`
+- `flask: 11`
+- `symfony: 10`
+- `gin: 9`
+- `fiber: 8`
+- `echo: 7`
+- `qwik: 6`
+
+You can override the ranking with:
+
+```bash
+export HUELLA_FRAMEWORK_PREFERENCES='{"fastapi":25,"express":12,"qwik":15}'
+```
+
+This keeps the ranking configurable instead of hardcoding one permanent priority order.

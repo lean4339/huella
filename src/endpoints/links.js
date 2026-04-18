@@ -1,6 +1,6 @@
 import fs from "fs";
 
-export function detectUiEndpointEdges(fileCatalog, endpoints) {
+export function detectUiEndpointEdges(fileCatalog, endpoints, uiEdges = []) {
   const edges = [];
   const wrapperSpecs = collectHttpWrapperSpecs(fileCatalog);
 
@@ -129,7 +129,7 @@ export function detectUiEndpointEdges(fileCatalog, endpoints) {
 
   }
 
-  return dedupeEdges(edges);
+  return dedupeEdges([...edges, ...deriveViewEndpointEdges(edges, uiEdges)]);
 }
 
 function findEndpointByRoute(endpoints, route, method = null) {
@@ -268,6 +268,25 @@ function isNetworkRelevantFile(relPath) {
   return isUiRelevantFile(relPath) ||
     /(^|\/)(controllers?|services?|handlers?|providers?|clients?|api|server|routers?)\//i.test(relPath) ||
     /\.(cs|py|php|ts|tsx|js|jsx)$/i.test(relPath);
+}
+
+function deriveViewEndpointEdges(endpointEdges, uiEdges) {
+  const derived = [];
+  const viewToScript = uiEdges.filter((item) => item.type === "ui_view_loads_script");
+
+  for (const edge of viewToScript) {
+    const scriptEdges = endpointEdges.filter((item) => item.from === edge.to);
+    for (const scriptEdge of scriptEdges) {
+      derived.push({
+        type: "ui_view_reaches_endpoint",
+        from: edge.from,
+        to: scriptEdge.to,
+        evidence: ["view_script_bridge", ...scriptEdge.evidence],
+      });
+    }
+  }
+
+  return derived;
 }
 
 function dedupeEdges(items) {

@@ -182,7 +182,7 @@ export function traceTerm(term, projectDir) {
   const uiSurfaces = detectUiSurfaces(fileCatalog);
   const uiEdges = detectUiEdges(fileCatalog, uiSurfaces, symbols, calls);
   const endpoints = detectEndpoints(fileCatalog);
-  const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints);
+  const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
   const variants = generateTermVariants(term);
   const files = findFilesWithTerm(fileCatalog, variants);
 

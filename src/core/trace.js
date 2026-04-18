@@ -174,8 +174,14 @@ export function traceTerm(term, projectDir) {
   const hits = [];
   for (const { filePath, content, pathMatched } of files) {
     const layerInfo = detectLayer(filePath);
-    let block = extractNamedFunction(filePath, term);
-    if (!block) block = extractContainingFunction(content, variants);
+    const ext = path.extname(filePath);
+    const isSourceFile = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".java", ".cs", ".rb", ".php", ".rs"].includes(ext);
+
+    let block = null;
+    if (isSourceFile) {
+      block = extractNamedFunction(filePath, term);
+      if (!block) block = extractContainingFunction(content, variants);
+    }
     const lines = getMatchingLines(content, variants);
     hits.push({ filePath, block, lines, pathMatched, ...layerInfo });
   }
@@ -200,7 +206,17 @@ export function traceTerm(term, projectDir) {
       }
     }
 
-    if (chain.length > 1) chains.push(chain);
+    if (chain.length > 1) {
+      chains.push(chain);
+      inChain.add(i);
+      for (let j = i + 1; j < hits.length; j++) {
+        const callee = hits[j];
+        if (!callee.block?.funcName) continue;
+        if (chain.includes(callee)) {
+          inChain.add(j);
+        }
+      }
+    }
   }
 
   const solo = hits.filter((_, i) => !inChain.has(i));

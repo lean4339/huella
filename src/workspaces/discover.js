@@ -127,6 +127,7 @@ function analyzeRepo(repoDir) {
     ports: dedupeNumbers(apps.flatMap((app) => app.ports || [])),
     endpoints,
     uiEndpointEdges,
+    eventEdges: detectEventEdges(fileCatalog, endpoints),
     configTargets: detectConfigTargets(fileCatalog),
     outboundTargets: detectOutboundTargets(fileCatalog),
   };
@@ -357,7 +358,72 @@ function buildNetworkPaths(repos, connections) {
     });
   }
 
+  for (const repo of repos) {
+    for (const edge of repo.eventEdges || []) {
+      paths.push({
+        type: "event_flow",
+        repo: repo.name,
+        root: repo.root,
+        from: edge.from,
+        to: edge.to,
+        via: edge.via,
+      });
+    }
+  }
+
   return paths;
+}
+
+function detectEventEdges(fileCatalog, endpoints) {
+  const edges = [];
+
+  for (const file of fileCatalog) {
+    if (!/\.(cs|py|js|ts)$/i.test(file.relPath)) continue;
+    const content = readFile(file.path);
+    if (!content) continue;
+
+    const endpointMatches = endpoints.filter((item) => item.file === file.relPath);
+    const publishesToSns = /\bPublishAsync\s*\(|\bSNS_TOPIC_ARN\b/.test(content);
+    const consumesSqs = /\bReceiveMessageAsync\s*\(|\bWORKER_QUEUE_URL\b/.test(content);
+    const writesDynamo = /\bDynamoDBContextBuilder\b|\bSaveAsync\s*\(/.test(content);
+    const writesS3 = /\bPutObjectAsync\s*\(|\bWORKER_BUCKET_NAME\b/.test(content);
+
+    if (publishesToSns) {
+      for (const endpoint of endpointMatches) {
+        edges.push({
+          from: `${file.relPath}#${endpoint.key}`,
+          to: "sns:topic",
+          via: "publish_event",
+        });
+      }
+    }
+
+    if (consumesSqs) {
+      edges.push({
+        from: file.relPath,
+        to: "sqs:queue",
+        via: "consume_event",
+      });
+    }
+
+    if (writesDynamo) {
+      edges.push({
+        from: file.relPath,
+        to: "dynamodb:table",
+        via: "store_data",
+      });
+    }
+
+    if (writesS3) {
+      edges.push({
+        from: file.relPath,
+        to: "s3:bucket",
+        via: "store_data",
+      });
+    }
+  }
+
+  return dedupeEventEdges(edges);
 }
 
 function dedupeApps(apps) {
@@ -643,6 +709,16 @@ function dedupeTargets(items) {
   const seen = new Set();
   return items.filter((item) => {
     const key = `${item.file}:${item.variable}:${item.value}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function dedupeEventEdges(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.from}:${item.to}:${item.via}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

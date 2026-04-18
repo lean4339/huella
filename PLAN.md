@@ -100,6 +100,44 @@ Initial mapping:
 
 ## Execution Plan
 
+### Critical Phase: Multi-language Foundation
+
+Objective:
+Make `huella` language-pluggable before continuing deeper graph features.
+
+Why this is critical:
+
+- the current power is too biased toward JS/TS
+- `huella` needs to read real-world web stacks across repos
+- the graph must not depend on one language-specific extractor shape
+
+Priority languages for the foundation:
+
+- `TS/JS`
+- `Python`
+- `C#`
+- `Go`
+- `Java`
+- `PHP`
+
+Tasks:
+
+1. Introduce `src/languages/` with one adapter per language.
+2. Move JS/TS logic into the first adapter.
+3. Define shared primitives:
+   - `extractSymbols`
+   - `extractImports`
+   - `extractEntrypoints` later
+4. Keep the core and graph language-agnostic.
+5. Persist language metadata on symbols and edges.
+
+Done when:
+
+- `def` and `refs` work on more than one language family
+- adding a new language does not require changing the core trace pipeline
+
+This phase temporarily takes precedence over the original linear phase order.
+
 ### Phase 0: Stabilize the Base
 
 Objective:

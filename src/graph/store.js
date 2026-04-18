@@ -62,6 +62,7 @@ export function updateTermSnapshot(graph, traceResult) {
       {
         name: symbol.name,
         kind: symbol.kind,
+        language: symbol.language,
         filePath: symbol.filePath,
         startLine: symbol.startLine,
         endLine: symbol.endLine,
@@ -72,6 +73,7 @@ export function updateTermSnapshot(graph, traceResult) {
   );
   graph.edges.imports = (traceResult.imports || []).map((item) => ({
     type: item.type,
+    language: item.language,
     fromFile: item.fromFile,
     specifier: item.specifier,
     resolvedPath: item.resolvedPath,

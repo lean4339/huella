@@ -1,10 +1,6 @@
 import fs from "fs";
 import path from "path";
-
-export const SOURCE_EXTENSIONS = new Set([
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
-  ".py", ".go", ".java", ".cs", ".rb", ".php", ".rs",
-]);
+import { SOURCE_EXTENSIONS } from "../extractors/symbols.js";
 
 export const TEXT_EXTENSIONS = new Set([
   ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",

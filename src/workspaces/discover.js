@@ -122,6 +122,8 @@ function analyzeRepo(repoDir) {
   const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
   const rpcSurfaces = detectRpcSurfaces(fileCatalog, symbols);
   const rpcFlows = detectRpcFlows(rpcSurfaces, symbols, calls, fileCatalog);
+  const configTargets = detectConfigTargets(fileCatalog);
+  const outboundTargets = resolveOutboundTargets(detectOutboundTargets(fileCatalog), configTargets);
   const eventEdges = detectEventEdges(fileCatalog, endpoints);
   const entrySurfaces = detectEntrySurfaces({
     apps,
@@ -145,8 +147,8 @@ function analyzeRepo(repoDir) {
     entrySurfaces,
     eventEdges,
     entryFlows: detectEntryFlows(fileCatalog, endpoints, symbols, calls),
-    configTargets: detectConfigTargets(fileCatalog),
-    outboundTargets: detectOutboundTargets(fileCatalog),
+    configTargets,
+    outboundTargets,
   };
 }
 
@@ -652,6 +654,15 @@ function detectOutboundTargets(fileCatalog) {
       });
     }
 
+    const jsEnvDefaultRe = /\bprocess\.env\.([A-Z][A-Z0-9_]*(?:API|URL|HOST|ORIGIN|ENDPOINT|URI|BASE)[A-Z0-9_]*)\b[\s\S]{0,80}?\|\|\s*["'`](https?:\/\/[^"'`]+|\/api[^"'`]*)["'`]/g;
+    while ((match = jsEnvDefaultRe.exec(content)) !== null) {
+      targets.push({
+        file: file.relPath,
+        variable: match[1],
+        value: normalizeTargetValue(match[2]),
+      });
+    }
+
     const envVarRe = /\bprocess\.env\.([A-Z][A-Z0-9_]*(?:API|URL|HOST|ORIGIN|ENDPOINT|URI|BASE)[A-Z0-9_]*)\b/g;
     while ((match = envVarRe.exec(content)) !== null) {
       targets.push({
@@ -663,6 +674,26 @@ function detectOutboundTargets(fileCatalog) {
   }
 
   return dedupeTargets(targets);
+}
+
+function resolveOutboundTargets(outboundTargets, configTargets) {
+  const configByVariable = new Map();
+  for (const target of configTargets) {
+    const key = normalizeToken(target.variable);
+    if (!key) continue;
+    const bucket = configByVariable.get(key) || [];
+    bucket.push(target);
+    configByVariable.set(key, bucket);
+  }
+
+  return dedupeTargets(outboundTargets.map((target) => {
+    if (target.value) return target;
+    const matches = configByVariable.get(normalizeToken(target.variable)) || [];
+    const concrete = matches.find((item) => item.value);
+    return concrete
+      ? { ...target, value: concrete.value, resolvedFrom: concrete.file }
+      : target;
+  }));
 }
 
 function isConfigLikeFile(relPath) {
@@ -729,6 +760,7 @@ function classifyConfigConnection(target, candidate = null) {
   const value = String(target.value || "");
   const variable = String(target.variable || "");
   const targetPort = extractPort(value);
+  const host = extractHost(value);
 
   if (/^\/api(\/|$)/i.test(value)) {
     return "service_target";
@@ -747,6 +779,10 @@ function classifyConfigConnection(target, candidate = null) {
   }
 
   if (targetPort && candidate?.ports?.includes(targetPort)) {
+    return "service_target";
+  }
+
+  if (candidate && isServiceLikeRepo(candidate) && host && /\b(api|gateway|backend|service)\b/i.test(host)) {
     return "service_target";
   }
 
@@ -770,12 +806,72 @@ function matchesRepoTarget(repo, target, haystack) {
     return true;
   }
 
+  const targetPathTokens = extractPathTokens(target.value);
+  if (targetPathTokens.length > 0) {
+    const endpointHaystack = [
+      ...(repo.endpoints || []).map((item) => `${item.key} ${item.route}`.toLowerCase()),
+      ...(repo.rpcSurfaces || []).map((item) => item.key.toLowerCase()),
+    ].join(" ");
+    if (targetPathTokens.some((token) => endpointHaystack.includes(token))) {
+      return true;
+    }
+  }
+
+  if (/^https?:\/\//i.test(target.value) && !targetPort) {
+    const serviceLike = isServiceLikeRepo(repo);
+    if (serviceLike && ((repo.rpcSurfaces?.length || 0) > 0 || (repo.endpoints?.length || 0) > 0)) {
+      const host = extractHost(target.value);
+      if (host && /\b(api|gateway|backend|service)\b/i.test(host)) {
+        return true;
+      }
+    }
+  }
+
   return haystack.some((needle) =>
     needle.length >= 4 && (
       normalizedValue.includes(needle) ||
       normalizedVariable.includes(needle)
     )
   );
+}
+
+function isServiceLikeRepo(repo) {
+  const frameworks = new Set((repo.frameworks || []).map((item) => item.id));
+  return (
+    (repo.rpcSurfaces?.length || 0) > 0 ||
+    (repo.endpoints?.length || 0) > 0
+  ) && (
+    frameworks.has("express") ||
+    frameworks.has("nestjs") ||
+    frameworks.has("fastapi") ||
+    frameworks.has("flask") ||
+    frameworks.has("django") ||
+    frameworks.has("aspnet-core") ||
+    frameworks.has("spring-boot") ||
+    frameworks.has("laravel") ||
+    frameworks.has("symfony") ||
+    frameworks.has("gin") ||
+    frameworks.has("fiber") ||
+    frameworks.has("echo")
+  );
+}
+
+function extractHost(value) {
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function extractPathTokens(value) {
+  try {
+    const pathname = new URL(value).pathname;
+    return tokenizeValue(pathname).filter((token) => token.length >= 4 && !GENERIC_REPO_TOKENS.has(token));
+  } catch {
+    if (!value.includes("/")) return [];
+    return tokenizeValue(value).filter((token) => token.length >= 4 && !GENERIC_REPO_TOKENS.has(token));
+  }
 }
 
 function buildRepoNeedles(repo) {

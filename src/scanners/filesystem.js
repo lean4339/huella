@@ -6,6 +6,11 @@ export const SOURCE_EXTENSIONS = new Set([
   ".py", ".go", ".java", ".cs", ".rb", ".php", ".rs",
 ]);
 
+export const TEXT_EXTENSIONS = new Set([
+  ".json", ".md", ".txt", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
+  ".xml", ".html", ".htm", ".css", ".scss", ".sass", ".less", ".sql",
+]);
+
 export const CONFIG_FILENAMES = new Set([
   "package.json",
   "docker-compose.yml",
@@ -44,8 +49,14 @@ function detectFileType(name, ext) {
   if (CONFIG_FILENAMES.has(name) || CONFIG_PREFIXES.some((prefix) => name.startsWith(prefix))) {
     return "config";
   }
+  if (name === "local" || name === "development" || name === "test" || name === "production") {
+    return "config";
+  }
   if (SOURCE_EXTENSIONS.has(ext)) {
     return "source";
+  }
+  if (TEXT_EXTENSIONS.has(ext)) {
+    return "text";
   }
   return "other";
 }

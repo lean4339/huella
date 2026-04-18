@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import { scanFilesystem, SOURCE_EXTENSIONS, SKIP_DIRS } from "../scanners/filesystem.js";
+import { scanFilesystem } from "../scanners/filesystem.js";
 
 function generateTermVariants(term) {
   const variants = new Set();
@@ -92,24 +92,17 @@ function detectLayer(filePath) {
   return { layer: "file", label: "📄 File", order: 0 };
 }
 
-function findFilesWithTerm(dir, variants, results = []) {
-  if (results.length >= 60) return results;
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return results; }
-
-  for (const entry of entries) {
-    if (results.length >= 60) break;
-    if (SKIP_DIRS.has(entry.name) || entry.name.startsWith(".")) continue;
-
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      findFilesWithTerm(full, variants, results);
-    } else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
-      const content = readFile(full);
-      if (!content) continue;
-      if (variants.some((v) => content.toLowerCase().includes(v.toLowerCase()))) {
-        results.push({ filePath: full, content });
-      }
+function findFilesWithTerm(fileCatalog, variants, limit = 60) {
+  const results = [];
+  for (const file of fileCatalog) {
+    if (results.length >= limit) break;
+    const relPathLower = file.relPath.toLowerCase();
+    const pathMatches = variants.some((v) => relPathLower.includes(v.toLowerCase()));
+    const content = readFile(file.path);
+    if (!content) continue;
+    const contentMatches = variants.some((v) => content.toLowerCase().includes(v.toLowerCase()));
+    if (pathMatches || contentMatches) {
+      results.push({ filePath: file.path, content, pathMatched: pathMatches });
     }
   }
   return results;
@@ -176,15 +169,15 @@ function getMatchingLines(content, variants) {
 export function traceTerm(term, projectDir) {
   const fileCatalog = scanFilesystem(projectDir);
   const variants = generateTermVariants(term);
-  const files = findFilesWithTerm(projectDir, variants);
+  const files = findFilesWithTerm(fileCatalog, variants);
 
   const hits = [];
-  for (const { filePath, content } of files) {
+  for (const { filePath, content, pathMatched } of files) {
     const layerInfo = detectLayer(filePath);
     let block = extractNamedFunction(filePath, term);
     if (!block) block = extractContainingFunction(content, variants);
     const lines = getMatchingLines(content, variants);
-    hits.push({ filePath, block, lines, ...layerInfo });
+    hits.push({ filePath, block, lines, pathMatched, ...layerInfo });
   }
 
   hits.sort((a, b) => a.order - b.order || a.filePath.localeCompare(b.filePath));
@@ -197,7 +190,6 @@ export function traceTerm(term, projectDir) {
     if (!caller.block?.code) continue;
 
     const chain = [caller];
-    inChain.add(i);
 
     for (let j = i + 1; j < hits.length; j++) {
       const callee = hits[j];
@@ -205,7 +197,6 @@ export function traceTerm(term, projectDir) {
       if (!callee.block?.funcName) continue;
       if (new RegExp(`\\b${callee.block.funcName}\\s*\\(`).test(caller.block.code)) {
         chain.push(callee);
-        inChain.add(j);
       }
     }
 

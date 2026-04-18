@@ -242,6 +242,10 @@ Tests:
 - class method
 - exported const
 
+V2 improvement:
+
+- add ranking and prioritization for trace results so the most relevant files, symbols, and flows appear first instead of relying mostly on lexical order
+
 ---
 
 ### Phase 4: Import and Call References
@@ -545,4 +549,3 @@ Only after that:
 5. implement `scanFilesystem`
 6. create first fixtures
 7. add first tests
-

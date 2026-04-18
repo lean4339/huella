@@ -1,4 +1,5 @@
 import fs from "fs";
+import { getFrameworkPreferenceBoost } from "./preferences.js";
 
 const FRAMEWORK_RULES = [
   {
@@ -171,9 +172,11 @@ export function detectFrameworks(fileCatalog) {
     .map(([id, score]) => ({
       id,
       score,
+      preferenceBoost: getFrameworkPreferenceBoost(id),
+      rankScore: score + getFrameworkPreferenceBoost(id),
       evidence: (evidence.get(id) || []).slice(0, 8),
     }))
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    .sort((a, b) => b.rankScore - a.rankScore || b.score - a.score || a.id.localeCompare(b.id));
 }
 
 function matchesLanguage(file, language) {

@@ -60,6 +60,10 @@ export function detectUiSurfaces(fileCatalog) {
     if (/^public\/.+\.(js|ts)$/i.test(relPath) || /(^|\/)(app|main)\.(js|ts)$/i.test(relPath)) {
       surfaces.push(makeSurface("page-script", file, 3));
     }
+
+    if (/(^|\/)wwwroot\/js\/.+\.(js|ts)$/i.test(relPath) || /(^|\/)wwwroot\/.+\/.+\.(js|ts)$/i.test(relPath)) {
+      surfaces.push(makeSurface("page-script", file, 3));
+    }
   }
 
   return dedupeSurfaces(surfaces).sort((a, b) =>

@@ -4,6 +4,8 @@ export function detectUiEdges(fileCatalog, uiSurfaces, symbols = [], calls = [])
   const edges = [];
   const viewSurfaces = uiSurfaces.filter((item) => item.type === "razor-view" || item.type === "template-view");
   const viewPaths = new Set(viewSurfaces.map((item) => item.relPath));
+  const scriptSurfaces = uiSurfaces.filter((item) => item.type === "page-script");
+  const scriptPaths = new Set(scriptSurfaces.map((item) => item.relPath));
   const symbolIndex = buildSymbolIndex(symbols, fileCatalog);
 
   const spaEntries = uiSurfaces.filter((item) => item.type === "spa-entry");
@@ -40,6 +42,24 @@ export function detectUiEdges(fileCatalog, uiSurfaces, symbols = [], calls = [])
       to: view.relPath,
       evidence: ["inline_script"],
     });
+  }
+
+  for (const view of viewSurfaces) {
+    const content = readFile(view.path);
+    if (!content) continue;
+
+    const localScriptRe = /<script[^>]+src=["']([^"']+)["']/gi;
+    let match;
+    while ((match = localScriptRe.exec(content)) !== null) {
+      const resolved = normalizeViewScriptPath(match[1], scriptPaths);
+      if (!resolved) continue;
+      edges.push({
+        type: "ui_view_loads_script",
+        from: view.relPath,
+        to: resolved,
+        evidence: ["script_src"],
+      });
+    }
   }
 
   for (const file of fileCatalog) {
@@ -183,6 +203,24 @@ function findImplicitControllerView(controllerName, viewPaths, actionName = "Ind
       (item.endsWith(`/Views/${controllerName}/Index.cshtml`) || item.endsWith(`/${controllerName}/Index.cshtml`)))
   );
   return candidate || null;
+}
+
+function normalizeViewScriptPath(src, scriptPaths) {
+  if (!src || /^https?:\/\//i.test(src)) return null;
+  const cleaned = src
+    .replace(/^~\//, "")
+    .replace(/^\//, "")
+    .replace(/\?.*$/, "");
+
+  const direct = [...scriptPaths].find((item) => item.endsWith(cleaned));
+  if (direct) return direct;
+
+  if (!cleaned.startsWith("wwwroot/")) {
+    const prefixed = [...scriptPaths].find((item) => item.endsWith(`wwwroot/${cleaned}`));
+    if (prefixed) return prefixed;
+  }
+
+  return null;
 }
 
 function extractControllerActions(content) {

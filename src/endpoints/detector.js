@@ -19,6 +19,10 @@ export function detectEndpoints(fileCatalog) {
       endpoints.push(...extractFastApiEndpoints(file.relPath, content));
     }
 
+    if (/(^|\/)app\.py$/i.test(file.relPath) && /\bfrom\s+flask\s+import\b|\bFlask\s*\(__name__/.test(content)) {
+      endpoints.push(...extractFlaskEndpoints(file.relPath, content));
+    }
+
     if (/api\/index\.php$/i.test(file.relPath)) {
       endpoints.push(...extractPhpDocumentedEndpoints(file.relPath, content));
     }
@@ -93,6 +97,33 @@ function extractFastApiEndpoints(relPath, content) {
       key: `${match[2].toUpperCase()} ${prefix}${match[3]}`,
     });
   }
+  return endpoints;
+}
+
+function extractFlaskEndpoints(relPath, content) {
+  const endpoints = [];
+  const routeRe = /@(app|[\w]+)\.route\(\s*["'`]([^"'`]+)["'`](?:\s*,\s*methods\s*=\s*\[([^\]]+)\])?/g;
+  let match;
+
+  while ((match = routeRe.exec(content)) !== null) {
+    const route = match[2];
+    const methodsRaw = match[3];
+    const methods = methodsRaw
+      ? [...methodsRaw.matchAll(/["'`]([A-Z]+)["'`]/g)].map((item) => item[1])
+      : ["GET"];
+
+    for (const method of methods) {
+      endpoints.push({
+        type: "flask-route",
+        file: relPath,
+        method,
+        route,
+        action: null,
+        key: `${method} ${route}`,
+      });
+    }
+  }
+
   return endpoints;
 }
 

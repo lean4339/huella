@@ -36,7 +36,8 @@ const REPO_MARKERS = [
 export function discoverWorkspace(rootDir, options = {}) {
   const maxRepos = options.maxRepos ?? 30;
   const repoDirs = findRepoDirs(rootDir, maxRepos);
-  const repos = repoDirs.map((repoDir) => analyzeRepo(repoDir));
+  const effectiveRepoDirs = repoDirs.length > 0 ? repoDirs : inferRootRepo(rootDir);
+  const repos = effectiveRepoDirs.map((repoDir) => analyzeRepo(repoDir));
   const connections = [
     ...findSharedFrameworkConnections(repos),
     ...findConfigConnections(repos),
@@ -48,6 +49,15 @@ export function discoverWorkspace(rootDir, options = {}) {
     repos,
     connections,
   };
+}
+
+function inferRootRepo(rootDir) {
+  const fileCatalog = scanFilesystem(rootDir, { maxFiles: 3000 });
+  const hasProjectMarkers = fileCatalog.some((file) =>
+    /(^|\/)(package\.json|composer\.json|go\.mod|manage\.py|requirements\.txt|pyproject\.toml|pom\.xml|build\.gradle|build\.gradle\.kts|.*\.csproj|Program\.cs|app\.py)$/i.test(file.relPath)
+  );
+
+  return hasProjectMarkers ? [rootDir] : [];
 }
 
 function findRepoDirs(rootDir, maxRepos) {
@@ -108,15 +118,7 @@ function analyzeRepo(repoDir) {
 function detectApps(repoDir, fileCatalog, frameworks) {
   const apps = [];
 
-  if (fileCatalog.some((file) => /Program\.cs$/i.test(file.relPath))) {
-    const entrypoints = fileCatalog.filter((file) => /Program\.cs$/i.test(file.relPath)).map((file) => file.relPath);
-    apps.push({
-      type: "dotnet-app",
-      name: path.basename(repoDir),
-      entrypoints,
-      ports: detectPortsForEntryPoints(fileCatalog, entrypoints),
-    });
-  }
+  apps.push(...detectDotnetApps(repoDir, fileCatalog));
 
   if (fileCatalog.some((file) => /next\.config\./i.test(file.relPath) || /^pages\//.test(file.relPath) || /^app\//.test(file.relPath))) {
     const entrypoints = fileCatalog
@@ -131,18 +133,7 @@ function detectApps(repoDir, fileCatalog, frameworks) {
     });
   }
 
-  if (fileCatalog.some((file) => /source\/server\/index\.(js|ts)$|server\.(js|ts)$|app\.(js|ts)$|main\.go$|main\.py$|index\.php$/i.test(file.relPath))) {
-    const entrypoints = fileCatalog
-      .filter((file) => /source\/server\/index\.(js|ts)$|server\.(js|ts)$|app\.(js|ts)$|main\.go$|main\.py$|index\.php$/i.test(file.relPath))
-      .slice(0, 20)
-      .map((file) => file.relPath);
-    apps.push({
-      type: "runtime-entry",
-      name: path.basename(repoDir),
-      entrypoints,
-      ports: detectPortsForEntryPoints(fileCatalog, entrypoints),
-    });
-  }
+  apps.push(...detectRuntimeApps(repoDir, fileCatalog));
 
   if (frameworks.some((item) => item.id === "aspnet-core") && fileCatalog.some((file) => /^Views\//.test(file.relPath) || /\.cshtml$/i.test(file.relPath))) {
     apps.push({
@@ -167,6 +158,63 @@ function detectApps(repoDir, fileCatalog, frameworks) {
   }
 
   return dedupeApps(apps);
+}
+
+function detectDotnetApps(repoDir, fileCatalog) {
+  const programFiles = fileCatalog.filter((file) => /Program\.cs$/i.test(file.relPath));
+  const groups = new Map();
+
+  for (const file of programFiles) {
+    const baseDir = path.dirname(file.relPath);
+    const key = findAppRoot(baseDir, ["apps", "src", "WebAPI"]) || baseDir;
+    const bucket = groups.get(key) || [];
+    bucket.push(file.relPath);
+    groups.set(key, bucket);
+  }
+
+  return [...groups.entries()].map(([root, entrypoints]) => ({
+    type: "dotnet-app",
+    name: appNameFromRoot(repoDir, root),
+    entrypoints,
+    ports: detectPortsForEntryPoints(fileCatalog, entrypoints),
+  }));
+}
+
+function detectRuntimeApps(repoDir, fileCatalog) {
+  const runtimeFiles = fileCatalog.filter((file) =>
+    /source\/server\/index\.(js|ts)$|server\.(js|ts)$|app\.(js|ts|py)$|main\.go$|main\.py$|index\.php$/i.test(file.relPath)
+  );
+  const groups = new Map();
+
+  for (const file of runtimeFiles) {
+    const baseDir = path.dirname(file.relPath);
+    const key = findAppRoot(baseDir, ["apps", "services", "service", "src", "api"]) || baseDir;
+    const bucket = groups.get(key) || [];
+    bucket.push(file.relPath);
+    groups.set(key, bucket);
+  }
+
+  return [...groups.entries()].map(([root, entrypoints]) => ({
+    type: "runtime-entry",
+    name: appNameFromRoot(repoDir, root),
+    entrypoints: entrypoints.slice(0, 20),
+    ports: detectPortsForEntryPoints(fileCatalog, entrypoints),
+  }));
+}
+
+function findAppRoot(relDir, anchors) {
+  const parts = relDir.split(path.sep).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (anchors.includes(parts[i]) && parts[i + 1]) {
+      return path.join(...parts.slice(0, i + 2));
+    }
+  }
+  return null;
+}
+
+function appNameFromRoot(repoDir, root) {
+  const parts = root.split(path.sep).filter(Boolean);
+  return parts[parts.length - 1] || path.basename(repoDir);
 }
 
 function findSharedFrameworkConnections(repos) {

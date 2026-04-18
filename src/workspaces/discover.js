@@ -7,6 +7,7 @@ import { extractSymbolsFromCatalog, extractCallsFromCatalog } from "../extractor
 import { detectUiSurfaces } from "../ui/detector.js";
 import { detectUiEdges } from "../ui/edges.js";
 import { detectUiEndpointEdges } from "../endpoints/links.js";
+import { detectRpcSurfaces, detectRpcFlows } from "../rpc/detector.js";
 
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -46,6 +47,7 @@ export function discoverWorkspace(rootDir, options = {}) {
   const connections = [
     ...findSharedFrameworkConnections(repos),
     ...findConfigConnections(repos),
+    ...findServerToServerConnections(repos),
     ...findSharedEndpointTargets(repos),
   ];
   const networkPaths = buildNetworkPaths(repos, connections);
@@ -117,6 +119,8 @@ function analyzeRepo(repoDir) {
   const uiEdges = detectUiEdges(fileCatalog, uiSurfaces, symbols, calls);
   const endpoints = detectEndpoints(fileCatalog);
   const uiEndpointEdges = detectUiEndpointEdges(fileCatalog, endpoints, uiEdges);
+  const rpcSurfaces = detectRpcSurfaces(fileCatalog, symbols);
+  const rpcFlows = detectRpcFlows(rpcSurfaces, symbols, calls, fileCatalog);
 
   return {
     root: repoDir,
@@ -127,6 +131,8 @@ function analyzeRepo(repoDir) {
     ports: dedupeNumbers(apps.flatMap((app) => app.ports || [])),
     endpoints,
     uiEndpointEdges,
+    rpcSurfaces,
+    rpcFlows,
     eventEdges: detectEventEdges(fileCatalog, endpoints),
     entryFlows: detectEntryFlows(fileCatalog, endpoints, symbols, calls),
     configTargets: detectConfigTargets(fileCatalog),
@@ -268,7 +274,7 @@ function findConfigConnections(repos) {
   const repoTokens = buildDistinctRepoTokens(repos);
 
   for (const sourceRepo of repos) {
-    const repoTargets = [...(sourceRepo.configTargets || []), ...(sourceRepo.outboundTargets || [])];
+    const repoTargets = [...(sourceRepo.configTargets || [])];
     for (const target of repoTargets) {
       const candidates = repos.filter((repo) =>
         repo.root !== sourceRepo.root && matchesRepoTarget(repo, target, repoTokens.get(repo.root) || [])
@@ -278,6 +284,36 @@ function findConfigConnections(repos) {
         const kind = classifyConfigConnection(target, candidate);
         connections.push({
           type: "config_target",
+          kind,
+          from: { name: sourceRepo.name, root: sourceRepo.root },
+          to: { name: candidate.name, root: candidate.root },
+          variable: target.variable,
+          value: target.value,
+          source: target.file,
+        });
+      }
+    }
+  }
+
+  return dedupeConnections(connections);
+}
+
+function findServerToServerConnections(repos) {
+  const connections = [];
+  const repoTokens = buildDistinctRepoTokens(repos);
+
+  for (const sourceRepo of repos) {
+    for (const target of sourceRepo.outboundTargets || []) {
+      const candidates = repos.filter((repo) =>
+        repo.root !== sourceRepo.root && matchesRepoTarget(repo, target, repoTokens.get(repo.root) || [])
+      );
+
+      for (const candidate of candidates) {
+        const kind = classifyConfigConnection(target, candidate);
+        if (kind !== "service_target") continue;
+
+        connections.push({
+          type: "server_to_server",
           kind,
           from: { name: sourceRepo.name, root: sourceRepo.root },
           to: { name: candidate.name, root: candidate.root },
@@ -343,6 +379,23 @@ function buildNetworkPaths(repos, connections) {
     }
   }
 
+  for (const repo of repos) {
+    for (const edge of (repo.uiEndpointEdges || []).filter((item) => item.type === "ui_calls_rpc_endpoint")) {
+      const surface = (repo.rpcSurfaces || []).find((item) => item.key === edge.to);
+      if (!surface) continue;
+      const flow = (repo.rpcFlows || []).find((item) => item.key === surface.key);
+      paths.push({
+        type: "local_rpc_flow",
+        fromRepo: repo.name,
+        fromRoot: repo.root,
+        from: edge.from,
+        rpc: surface.key,
+        handler: `${surface.handlerFile}#${surface.handlerName}`,
+        steps: flow?.steps || [surface.key, `${surface.handlerFile}#${surface.handlerName}`],
+      });
+    }
+  }
+
   for (const connection of connections.filter((item) => item.type === "config_target")) {
     const targetRepo = repos.find((repo) => repo.root === connection.to.root);
     if (!targetRepo) continue;
@@ -354,6 +407,23 @@ function buildNetworkPaths(repos, connections) {
       toRepo: connection.to.name,
       toRoot: connection.to.root,
       via: `${connection.variable}=${connection.value}`,
+      endpointCount: targetRepo.endpoints.length,
+      endpointSample: targetRepo.endpoints.slice(0, 5).map((item) => item.key),
+    });
+  }
+
+  for (const connection of connections.filter((item) => item.type === "server_to_server")) {
+    const targetRepo = repos.find((repo) => repo.root === connection.to.root);
+    if (!targetRepo) continue;
+    paths.push({
+      type: "server_hop",
+      kind: connection.kind,
+      fromRepo: connection.from.name,
+      fromRoot: connection.from.root,
+      toRepo: connection.to.name,
+      toRoot: connection.to.root,
+      via: `${connection.variable}=${connection.value || "<config>"}`,
+      source: connection.source,
       endpointCount: targetRepo.endpoints.length,
       endpointSample: targetRepo.endpoints.slice(0, 5).map((item) => item.key),
     });
@@ -568,6 +638,15 @@ function detectOutboundTargets(fileCatalog) {
       targets.push({
         file: file.relPath,
         variable,
+        value: "",
+      });
+    }
+
+    const envVarRe = /\bprocess\.env\.([A-Z][A-Z0-9_]*(?:API|URL|HOST|ORIGIN|ENDPOINT|URI|BASE)[A-Z0-9_]*)\b/g;
+    while ((match = envVarRe.exec(content)) !== null) {
+      targets.push({
+        file: file.relPath,
+        variable: match[1],
         value: "",
       });
     }

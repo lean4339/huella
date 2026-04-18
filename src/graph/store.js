@@ -117,6 +117,15 @@ export function updateTermSnapshot(graph, traceResult) {
     to: item.to,
     evidence: item.evidence,
   }));
+  graph.edges.rpc = (traceResult.rpcSurfaces || []).map((item) => ({
+    type: item.type,
+    key: item.key,
+    mod: item.mod,
+    fun: item.fun,
+    apiFile: item.apiFile,
+    handlerFile: item.handlerFile,
+    handlerName: item.handlerName,
+  }));
   graph.lastDelta = {
     term: traceResult.term,
     counts: {
@@ -134,12 +143,15 @@ export function updateTermSnapshot(graph, traceResult) {
       uiEdges: (traceResult.uiEdges || []).length,
       endpoints: (traceResult.endpoints || []).length,
       uiEndpointEdges: (traceResult.uiEndpointEdges || []).length,
+      rpcSurfaces: (traceResult.rpcSurfaces || []).length,
+      rpcFlows: (traceResult.rpcFlows || []).length,
     },
     at: graph.builtAt,
   };
 
   graph.profiles.frameworks = traceResult.frameworks || [];
   graph.profiles.uiSurfaces = traceResult.uiSurfaces || [];
+  graph.profiles.rpcSurfaces = traceResult.rpcSurfaces || [];
 
   graph.termCache[traceResult.term] = {
     timestamp: graph.builtAt,
@@ -157,6 +169,8 @@ export function updateTermSnapshot(graph, traceResult) {
       uiEdges: (traceResult.uiEdges || []).map((item) => item.type),
       endpoints: (traceResult.endpoints || []).map((item) => item.key),
       uiEndpointEdges: (traceResult.uiEndpointEdges || []).map((item) => item.type),
+      rpcSurfaces: (traceResult.rpcSurfaces || []).map((item) => item.key),
+      rpcFlows: (traceResult.rpcFlows || []).map((item) => item.key),
     },
   };
 

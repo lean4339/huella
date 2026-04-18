@@ -1,6 +1,7 @@
 import path from "path";
 
 function formatPath(filePath, projectDir) {
+  if (!path.isAbsolute(filePath)) return filePath;
   return path.relative(projectDir, filePath) || filePath;
 }
 
@@ -30,13 +31,15 @@ export function formatTraceHuman(result, graphMeta) {
   lines.push(`ui edges: ${result.uiEdges.length}`);
   lines.push(`endpoints: ${result.endpoints.length}`);
   lines.push(`ui->endpoint: ${result.uiEndpointEdges.length}`);
+  lines.push(`rpc surfaces: ${result.rpcSurfaces?.length ?? 0}`);
+  lines.push(`rpc flows: ${result.rpcFlows?.length ?? 0}`);
   lines.push(`files: ${result.hits.length}`);
   lines.push(`chains: ${result.chains.length}`);
   lines.push(`solo: ${result.solo.length}`);
 
   if (graphMeta) {
     lines.push(`graph: ${graphMeta.graphPath}`);
-    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, calls ${graphMeta.delta.scan.calls}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}, endpoints ${graphMeta.delta.scan.endpoints}, uiToEndpoint ${graphMeta.delta.scan.uiEndpointEdges}`);
+    lines.push(`snapshot: chains ${graphMeta.delta.counts.chains >= 0 ? "+" : ""}${graphMeta.delta.counts.chains}, solo ${graphMeta.delta.counts.solo >= 0 ? "+" : ""}${graphMeta.delta.counts.solo}, files ${graphMeta.delta.counts.files >= 0 ? "+" : ""}${graphMeta.delta.counts.files}, catalog ${graphMeta.delta.scan.catalogFiles}, symbols ${graphMeta.delta.scan.symbols}, imports ${graphMeta.delta.scan.imports}, calls ${graphMeta.delta.scan.calls}, frameworks ${graphMeta.delta.scan.frameworks}, ui ${graphMeta.delta.scan.uiSurfaces}, uiEdges ${graphMeta.delta.scan.uiEdges}, endpoints ${graphMeta.delta.scan.endpoints}, uiToEndpoint ${graphMeta.delta.scan.uiEndpointEdges}, rpcSurfaces ${graphMeta.delta.scan.rpcSurfaces}, rpcFlows ${graphMeta.delta.scan.rpcFlows}`);
   }
 
   if (result.frameworks.length > 0) {
@@ -58,6 +61,20 @@ export function formatTraceHuman(result, graphMeta) {
   if (result.uiEndpointEdges.length > 0) {
     lines.push("");
     lines.push(`UI->Endpoint: ${result.uiEndpointEdges.slice(0, 12).map((item) => `${item.type}:${item.from}->${item.to}`).join(", ")}`);
+  }
+
+  if ((result.rpcSurfaces?.length ?? 0) > 0) {
+    lines.push("");
+    lines.push(`RPC Surfaces: ${result.rpcSurfaces.slice(0, 12).map((item) => `${item.key}->${formatPath(item.handlerFile, result.projectDir)}#${item.handlerName}`).join(", ")}`);
+  }
+
+  if ((result.rpcFlows?.length ?? 0) > 0) {
+    lines.push("");
+    lines.push("RPC Flows");
+    for (const flow of result.rpcFlows.slice(0, 8)) {
+      lines.push(`  ${flow.key}`);
+      lines.push(`    ${flow.steps.map((step) => step.startsWith(result.projectDir) ? formatPath(step, result.projectDir) : step).join(" -> ")}`);
+    }
   }
 
   if (result.chains.length > 0) {

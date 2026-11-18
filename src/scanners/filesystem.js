@@ -36,6 +36,7 @@ const LAYER_RULES = [
 ];
 
 function detectLayer(filePath) {
+  filePath = filePath.replace(/\\/g, "/");
   for (const rule of LAYER_RULES) {
     if (rule.re.test(filePath)) return { layer: rule.layer, order: rule.order };
   }

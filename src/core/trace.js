@@ -89,6 +89,7 @@ function readFile(filePath) {
 }
 
 function detectLayer(filePath) {
+  filePath = filePath.replace(/\\/g, "/");
   if (/\/(routes?|router|api|controllers?|endpoints?|views?|pages?|graphql|resolvers?)\b/i.test(filePath)) {
     return { layer: "entry", label: "① Entry", order: 1 };
   }
